@@ -2,12 +2,12 @@ import json
 import logging
 import os
 
-from agent.browser_use.browser.browser import Browser, IN_DOCKER
-from agent.browser_use.browser.context import BrowserContext, BrowserContextConfig
+from browser_use.browser.browser import Browser, IN_DOCKER
+from browser_use.browser.context import BrowserContext, BrowserContextConfig
 from playwright.async_api import Browser as PlaywrightBrowser
 from playwright.async_api import BrowserContext as PlaywrightBrowserContext
 from typing import Optional
-from agent.browser_use.browser.context import BrowserContextState
+from browser_use.browser.context import BrowserContextState
 
 logger = logging.getLogger(__name__)
 

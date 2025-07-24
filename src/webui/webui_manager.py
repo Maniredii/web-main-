@@ -18,9 +18,9 @@ from webui.components.load_save_config_tab import create_load_save_config_tab
 from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContext
 from browser_use.agent.service import Agent
-from webui.custom_browser import CustomBrowser
-from webui.custom_context import CustomBrowserContext
-from webui.custom_controller import CustomController
+from browser.custom_browser import CustomBrowser
+from browser.custom_context import CustomBrowserContext
+from controller.custom_controller import CustomController
 from agent.deep_research.deep_research_agent import DeepResearchAgent
 
 

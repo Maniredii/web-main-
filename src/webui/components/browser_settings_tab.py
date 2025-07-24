@@ -34,8 +34,8 @@ def create_browser_settings_tab(webui_manager: str):
     """
     Creates a browser settings tab.
     """
-    # This function is now passed a string, so we need to get the manager from config
-    webui_manager_instance = config.get_webui_manager(webui_manager)
+    # webui_manager is already a WebuiManager instance
+    webui_manager_instance = webui_manager
 
     input_components = set(webui_manager_instance.get_components())
     tab_components = {}
