@@ -128,8 +128,7 @@ async def apply_to_indeed():
         
         browser = CustomBrowser()
         controller = CustomController()
-        agent = BrowserUseAgent(llm=llm, browser=browser, controller=controller)
-        
+
         indeed_prompt = """
 Go to Indeed.com and apply for Python developer jobs:
 
@@ -155,7 +154,16 @@ Be selective - quality over quantity!
 """
         
         print("🎯 Applying to Indeed jobs...")
-        result = await agent.run(indeed_prompt)
+
+        # Create agent with Indeed prompt as task
+        agent = BrowserUseAgent(
+            task=indeed_prompt,
+            llm=llm,
+            browser=browser,
+            controller=controller
+        )
+
+        result = await agent.run()
         
         print("\n🎉 Indeed applications complete!")
         print(result)

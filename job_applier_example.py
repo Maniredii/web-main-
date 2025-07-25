@@ -53,12 +53,11 @@ class JobApplier:
         browser = CustomBrowser()
         controller = CustomController()
         
-        # Initialize the agent
-        self.agent = BrowserUseAgent(
-            llm=llm,
-            browser=browser,
-            controller=controller
-        )
+        # Store components for later agent creation
+        self.llm = llm
+        self.browser = browser
+        self.controller = controller
+        self.agent = None
         
     async def apply_to_linkedin_jobs(self):
         """Apply to jobs on LinkedIn"""
@@ -93,7 +92,14 @@ class JobApplier:
         """
         
         try:
-            result = await self.agent.run(linkedin_prompt)
+            # Create agent with LinkedIn prompt as task
+            self.agent = BrowserUseAgent(
+                task=linkedin_prompt,
+                llm=self.llm,
+                browser=self.browser,
+                controller=self.controller
+            )
+            result = await self.agent.run()
             print("LinkedIn job application results:")
             print(result)
             return result
@@ -119,7 +125,14 @@ class JobApplier:
         """
         
         try:
-            result = await self.agent.run(indeed_prompt)
+            # Create agent with Indeed prompt as task
+            self.agent = BrowserUseAgent(
+                task=indeed_prompt,
+                llm=self.llm,
+                browser=self.browser,
+                controller=self.controller
+            )
+            result = await self.agent.run()
             print("Indeed job application results:")
             print(result)
             return result

@@ -89,8 +89,18 @@ IMPORTANT: Be selective and only apply to legitimate software engineering positi
         print("⏹️  Press Ctrl+C to stop at any time")
         print("\n" + "="*50)
         
+        # Initialize agent with the job prompt as task
+        print("🤖 Creating browser automation agent...")
+        agent = BrowserUseAgent(
+            task=job_prompt,
+            llm=llm,
+            browser=browser,
+            controller=controller
+        )
+        print("✅ Agent ready!")
+
         # Run the automation
-        result = await agent.run(job_prompt)
+        result = await agent.run()
         
         print("\n" + "="*50)
         print("🎉 JOB APPLICATIONS COMPLETE!")
@@ -127,8 +137,7 @@ async def apply_indeed_jobs():
         
         browser = CustomBrowser()
         controller = CustomController()
-        agent = BrowserUseAgent(llm=llm, browser=browser, controller=controller)
-        
+
         indeed_prompt = """
 Apply for Python/Software Engineer jobs on Indeed:
 
@@ -154,7 +163,16 @@ Quality over quantity - be selective!
 """
         
         print("🎯 Applying to Indeed jobs...")
-        result = await agent.run(indeed_prompt)
+
+        # Create agent with Indeed prompt as task
+        agent = BrowserUseAgent(
+            task=indeed_prompt,
+            llm=llm,
+            browser=browser,
+            controller=controller
+        )
+
+        result = await agent.run()
         
         print("\n🎉 Indeed applications complete!")
         print("📊 Results:")
