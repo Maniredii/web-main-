@@ -64,7 +64,7 @@ def create_agent_settings_tab(webui_manager: Any):
             llm_provider = gr.Dropdown(
                 choices=[provider for provider, model in config.model_names.items()],
                 label="LLM Provider",
-                value="grok",
+                value="groq",
                 info="Select LLM provider for LLM",
                 interactive=True
             )
@@ -126,7 +126,7 @@ def create_agent_settings_tab(webui_manager: Any):
                 choices=[provider for provider, model in config.model_names.items()],
                 label="Planner LLM Provider",
                 info="Select LLM provider for LLM",
-                value="grok",
+                value="groq",
                 interactive=True
             )
             planner_llm_model_name = gr.Dropdown(

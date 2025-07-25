@@ -350,5 +350,17 @@ def get_llm_model(provider: str, **kwargs):
             model_name=kwargs.get("model_name", "Qwen/QwQ-32B"),
             temperature=kwargs.get("temperature", 0.0),
         )
+    elif provider == "groq":
+        if not kwargs.get("base_url", ""):
+            base_url = os.getenv("GROQ_ENDPOINT", "https://api.groq.com/openai/v1")
+        else:
+            base_url = kwargs.get("base_url")
+
+        return ChatOpenAI(
+            model=kwargs.get("model_name", "llama-3.3-70b-versatile"),
+            temperature=kwargs.get("temperature", 0.0),
+            base_url=base_url,
+            api_key=api_key,
+        )
     else:
         raise ValueError(f"Unsupported provider: {provider}")

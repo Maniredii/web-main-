@@ -1,0 +1,69 @@
+{
+  "personal_info": {
+    "name": "Your Name",
+    "email": "your.email@example.com",
+    "phone": "(555) 123-4567",
+    "linkedin": "https://linkedin.com/in/yourprofile",
+    "github": "https://github.com/yourusername",
+    "portfolio": "https://yourportfolio.com",
+    "resume_path": "resume.pdf",
+    "cover_letter_template": "I am excited to apply for the {position} role at {company}..."
+  },
+  "job_criteria": {
+    "required_keywords": [
+      "Python",
+      "Software Engineer"
+    ],
+    "preferred_keywords": [
+      "Django",
+      "React",
+      "AWS",
+      "Docker"
+    ],
+    "excluded_keywords": [
+      "Senior",
+      "Lead",
+      "Manager"
+    ],
+    "locations": [
+      "Remote",
+      "San Francisco",
+      "New York"
+    ],
+    "salary_min": 80000,
+    "experience_years": 3,
+    "job_types": [
+      "Full-time"
+    ],
+    "company_size": [
+      "Startup",
+      "Mid-size",
+      "Large"
+    ]
+  },
+  "application_settings": {
+    "max_applications_per_day": 25,
+    "max_applications_per_site": 15,
+    "apply_to_new_postings_only": true,
+    "skip_cover_letter_required": false,
+    "auto_answer_questions": true
+  },
+  "job_sites": {
+    "linkedin": {
+      "enabled": true,
+      "priority": 1
+    },
+    "indeed": {
+      "enabled": true,
+      "priority": 2
+    },
+    "glassdoor": {
+      "enabled": true,
+      "priority": 3
+    },
+    "angel": {
+      "enabled": false,
+      "priority": 4
+    }
+  }
+}
