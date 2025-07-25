@@ -1,0 +1,154 @@
+{
+  "personal_info": {
+    "first_name": "John",
+    "last_name": "Developer",
+    "full_name": "John Developer",
+    "email": "tivep27728@devdigs.com",
+    "phone": "+1-555-123-4567",
+    "address": {
+      "street": "123 Tech Street",
+      "city": "San Francisco",
+      "state": "CA",
+      "zip_code": "94105",
+      "country": "United States"
+    },
+    "linkedin_url": "https://linkedin.com/in/johndeveloper",
+    "portfolio_url": "https://johndeveloper.dev",
+    "github_url": "https://github.com/johndeveloper"
+  },
+  
+  "professional_summary": {
+    "bio": "Experienced Python Developer with 5+ years of expertise in web development, data analysis, and machine learning. Passionate about creating scalable solutions and working with cutting-edge technologies.",
+    "elevator_pitch": "Full-stack Python developer specializing in Django, Flask, and data science applications with a proven track record of delivering high-quality software solutions."
+  },
+  
+  "work_experience": [
+    {
+      "company": "Tech Solutions Inc",
+      "position": "Senior Python Developer",
+      "start_date": "2021-03",
+      "end_date": "present",
+      "location": "San Francisco, CA",
+      "description": "Led development of scalable web applications using Django and React. Implemented CI/CD pipelines and improved system performance by 40%.",
+      "achievements": [
+        "Developed 5+ production applications serving 10,000+ users",
+        "Mentored junior developers and conducted code reviews",
+        "Implemented automated testing reducing bugs by 60%"
+      ]
+    },
+    {
+      "company": "StartupXYZ",
+      "position": "Python Developer",
+      "start_date": "2019-06",
+      "end_date": "2021-02",
+      "location": "Remote",
+      "description": "Built data processing pipelines and RESTful APIs. Worked with machine learning models for predictive analytics.",
+      "achievements": [
+        "Created data pipeline processing 1M+ records daily",
+        "Developed ML models with 95% accuracy",
+        "Reduced API response time by 50%"
+      ]
+    }
+  ],
+  
+  "education": [
+    {
+      "degree": "Bachelor of Science in Computer Science",
+      "school": "University of California, Berkeley",
+      "graduation_date": "2019-05",
+      "gpa": "3.8",
+      "relevant_coursework": ["Data Structures", "Algorithms", "Database Systems", "Machine Learning"]
+    }
+  ],
+  
+  "skills": {
+    "programming_languages": ["Python", "JavaScript", "SQL", "HTML/CSS"],
+    "frameworks": ["Django", "Flask", "React", "FastAPI", "Pandas", "NumPy"],
+    "databases": ["PostgreSQL", "MySQL", "MongoDB", "Redis"],
+    "tools": ["Git", "Docker", "AWS", "Jenkins", "Kubernetes"],
+    "soft_skills": ["Team Leadership", "Problem Solving", "Communication", "Project Management"]
+  },
+  
+  "certifications": [
+    {
+      "name": "AWS Certified Developer",
+      "issuer": "Amazon Web Services",
+      "date": "2022-08",
+      "credential_id": "AWS-DEV-2022-001"
+    },
+    {
+      "name": "Python Institute PCAP",
+      "issuer": "Python Institute",
+      "date": "2020-12",
+      "credential_id": "PCAP-2020-001"
+    }
+  ],
+  
+  "files": {
+    "resume_path": "./resume.pdf",
+    "cover_letter_template": "./cover_letter_template.txt",
+    "portfolio_pdf": "./portfolio.pdf"
+  },
+  
+  "job_preferences": {
+    "desired_positions": ["Python Developer", "Software Engineer", "Backend Developer", "Full Stack Developer"],
+    "preferred_locations": ["Remote", "San Francisco", "New York", "Seattle"],
+    "salary_range": {
+      "min": 80000,
+      "max": 150000,
+      "currency": "USD"
+    },
+    "work_type": ["Full-time", "Contract"],
+    "industries": ["Technology", "Fintech", "Healthcare", "E-commerce"],
+    "company_size": ["Startup", "Mid-size", "Enterprise"],
+    "remote_preference": "Remote preferred"
+  },
+  
+  "application_responses": {
+    "availability": {
+      "start_date": "2 weeks notice",
+      "immediate": false,
+      "notice_period": "2 weeks"
+    },
+    "relocation": {
+      "willing_to_relocate": false,
+      "preferred_locations": ["Remote work preferred"]
+    },
+    "salary_expectations": {
+      "negotiable": true,
+      "range": "$80,000 - $150,000",
+      "benefits_important": true
+    },
+    "work_authorization": {
+      "authorized_to_work": true,
+      "visa_sponsorship_needed": false,
+      "citizenship_status": "US Citizen"
+    },
+    "experience_questions": {
+      "years_python": "5+",
+      "years_web_development": "5+",
+      "years_leadership": "2+",
+      "team_size_managed": "3-5 developers"
+    },
+    "common_questions": {
+      "why_interested": "I'm passionate about creating scalable solutions and working with innovative technologies. Your company's mission aligns with my career goals.",
+      "greatest_strength": "My ability to solve complex problems and mentor team members while delivering high-quality code.",
+      "career_goals": "To continue growing as a technical leader while contributing to impactful projects that make a difference.",
+      "why_leaving": "Seeking new challenges and opportunities to grow in a dynamic environment."
+    }
+  },
+  
+  "cover_letter_templates": {
+    "default": "Dear Hiring Manager,\n\nI am excited to apply for the {position} role at {company}. With {experience_years} years of experience in Python development, I am confident I can contribute to your team's success.\n\n{custom_paragraph}\n\nI look forward to discussing how my skills can benefit {company}.\n\nBest regards,\n{full_name}",
+    "tech_focused": "Dear {hiring_manager},\n\nAs a passionate Python developer with expertise in {relevant_skills}, I am thrilled to apply for the {position} position at {company}.\n\n{technical_achievements}\n\nI am excited about the opportunity to contribute to {company}'s innovative projects.\n\nSincerely,\n{full_name}"
+  },
+  
+  "search_criteria": {
+    "keywords": ["Python Developer", "Software Engineer", "Backend Developer"],
+    "locations": ["Remote", "San Francisco, CA", "New York, NY"],
+    "experience_level": ["Mid-level", "Senior"],
+    "job_type": ["Full-time"],
+    "date_posted": "Past week",
+    "easy_apply_only": true
+  }
+}
