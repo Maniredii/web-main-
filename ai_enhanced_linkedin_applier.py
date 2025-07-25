@@ -241,278 +241,63 @@ Return only the most reliable selectors in JSON format:
             time.sleep(random.uniform(0.05, 0.15))
 
     def show_manual_intervention_popup(self, title, message, instructions=""):
-        """Show reliable manual intervention popup"""
-        print(f"🔔 Manual intervention needed: {title}")
+        """Show GUARANTEED manual intervention popup"""
+        print(f"\n🚨 MANUAL INTERVENTION REQUIRED: {title}")
+        print("=" * 60)
         print(f"📋 {message}")
         if instructions:
             print(f"💡 {instructions}")
+        print("=" * 60)
 
-        # Try multiple popup methods for maximum reliability
-        methods = [
-            self._show_direct_tkinter_popup,
-            self._show_subprocess_popup,
-            self._show_messagebox_popup,
-            self._fallback_intervention
-        ]
-
-        for i, method in enumerate(methods, 1):
-            try:
-                print(f"🔄 Trying popup method {i}...")
-                result = method(title, message, instructions)
-                if result:
-                    print("✅ User completed manual intervention")
-                    return True
-            except Exception as e:
-                print(f"⚠️ Method {i} failed: {e}")
-                continue
-
-        print("❌ All popup methods failed")
-        return False
-
-    def _show_direct_tkinter_popup(self, title, message, instructions=""):
-        """Direct tkinter popup - most reliable method"""
-        import tkinter as tk
-        from tkinter import ttk
-
-        # Create root window
-        root = tk.Tk()
-        root.withdraw()  # Hide root window
-
-        # Create popup
-        popup = tk.Toplevel(root)
-        popup.title("LinkedIn Automation - Manual Action Required")
-        popup.geometry("400x250")
-        popup.resizable(False, False)
-
-        # Make it modal and always on top
-        popup.transient(root)
-        popup.grab_set()
-        popup.attributes('-topmost', True)
-        popup.lift()
-        popup.focus_force()
-
-        # Prevent closing without clicking button
-        popup.protocol("WM_DELETE_WINDOW", lambda: None)
-
-        # Configure colors
-        popup.configure(bg='#ffffff')
-
-        # Header frame
-        header_frame = tk.Frame(popup, bg='#0077b5', height=60)
-        header_frame.pack(fill='x')
-        header_frame.pack_propagate(False)
-
-        # Title in header
-        title_label = tk.Label(header_frame, text=title,
-                              font=('Segoe UI', 12, 'bold'),
-                              bg='#0077b5', fg='white')
-        title_label.pack(expand=True)
-
-        # Content frame
-        content_frame = tk.Frame(popup, bg='#ffffff')
-        content_frame.pack(fill='both', expand=True, padx=20, pady=20)
-
-        # Message
-        msg_label = tk.Label(content_frame, text=message,
-                            font=('Segoe UI', 10),
-                            bg='#ffffff', fg='#333333',
-                            wraplength=350, justify='center')
-        msg_label.pack(pady=(0, 10))
-
-        # Instructions
-        if instructions:
-            inst_label = tk.Label(content_frame, text=instructions,
-                                 font=('Segoe UI', 9),
-                                 bg='#ffffff', fg='#666666',
-                                 wraplength=350, justify='center')
-            inst_label.pack(pady=(0, 15))
-
-        # Button frame
-        button_frame = tk.Frame(content_frame, bg='#ffffff')
-        button_frame.pack(side='bottom', fill='x')
-
-        # Continue button
-        user_clicked = [False]  # Use list to modify from nested function
-
-        def on_continue():
-            user_clicked[0] = True
-            popup.destroy()
-            root.quit()
-
-        continue_btn = tk.Button(button_frame, text="✅ Continue Automation",
-                               command=on_continue,
-                               font=('Segoe UI', 11, 'bold'),
-                               bg='#0077b5', fg='white',
-                               padx=30, pady=10,
-                               relief='flat',
-                               cursor='hand2')
-        continue_btn.pack(pady=15)
-
-        # Add hover effects
-        def on_enter(e):
-            continue_btn.config(bg='#005885')
-        def on_leave(e):
-            continue_btn.config(bg='#0077b5')
-
-        continue_btn.bind("<Enter>", on_enter)
-        continue_btn.bind("<Leave>", on_leave)
-
-        # Center the popup on screen
-        popup.update_idletasks()
-        screen_width = popup.winfo_screenwidth()
-        screen_height = popup.winfo_screenheight()
-        x = (screen_width - 400) // 2
-        y = (screen_height - 250) // 2
-        popup.geometry(f"400x250+{x}+{y}")
-
-        # Flash to get attention
-        def flash():
-            for _ in range(3):
-                popup.attributes('-alpha', 0.3)
-                popup.update()
-                time.sleep(0.1)
-                popup.attributes('-alpha', 1.0)
-                popup.update()
-                time.sleep(0.1)
-
-        popup.after(500, flash)
-
-        # Set focus
-        continue_btn.focus_set()
-
-        print("🔔 GUI popup displayed - waiting for user...")
-
-        # Run the popup
-        popup.mainloop()
-
-        # Clean up
+        # Method 1: Simple messagebox (most reliable)
         try:
+            print("🔔 Showing popup window...")
+
+            # Create new root window
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            root.lift()
+            root.focus_force()
+
+            # Combine message and instructions
+            full_message = f"{message}\n\n{instructions}" if instructions else message
+
+            # Show messagebox with attention-grabbing title
+            messagebox.showinfo(
+                "🚨 LINKEDIN AUTOMATION - MANUAL ACTION REQUIRED 🚨",
+                full_message
+            )
+
             root.destroy()
-        except:
-            pass
-
-        return user_clicked[0]
-
-    def _show_subprocess_popup(self, title, message, instructions=""):
-        """Subprocess-based popup as backup"""
-        popup_script = f'''
-import tkinter as tk
-import sys
-
-def show_popup():
-    try:
-        root = tk.Tk()
-        root.withdraw()
-
-        popup = tk.Toplevel(root)
-        popup.title("LinkedIn Automation - Manual Action Required")
-        popup.geometry("400x250")
-        popup.resizable(False, False)
-        popup.attributes('-topmost', True)
-        popup.grab_set()
-        popup.configure(bg='#ffffff')
-
-        # Header
-        header = tk.Frame(popup, bg='#0077b5', height=50)
-        header.pack(fill='x')
-        header.pack_propagate(False)
-
-        title_label = tk.Label(header, text="""{title}""", font=('Arial', 12, 'bold'),
-                              bg='#0077b5', fg='white')
-        title_label.pack(expand=True)
-
-        # Content
-        content = tk.Frame(popup, bg='#ffffff')
-        content.pack(fill='both', expand=True, padx=20, pady=15)
-
-        msg_label = tk.Label(content, text="""{message}""", font=('Arial', 10),
-                            bg='#ffffff', fg='#333333', wraplength=350, justify='center')
-        msg_label.pack(pady=(0, 10))
-
-        if """{instructions}""":
-            inst_label = tk.Label(content, text="""{instructions}""", font=('Arial', 9),
-                                 bg='#ffffff', fg='#666666', wraplength=350, justify='center')
-            inst_label.pack(pady=(0, 15))
-
-        def on_continue():
-            popup.destroy()
-            root.quit()
-            sys.exit(0)
-
-        btn = tk.Button(content, text="Continue Automation", command=on_continue,
-                       font=('Arial', 10, 'bold'), bg='#0077b5', fg='white',
-                       padx=30, pady=8)
-        btn.pack(pady=10)
-
-        # Center popup
-        popup.update_idletasks()
-        x = (popup.winfo_screenwidth() // 2) - 200
-        y = (popup.winfo_screenheight() // 2) - 125
-        popup.geometry(f"400x250+{{x}}+{{y}}")
-
-        popup.mainloop()
-
-    except Exception as e:
-        print(f"Popup error: {{e}}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    show_popup()
-'''
-
-        try:
-            with open('temp_popup.py', 'w') as f:
-                f.write(popup_script)
-
-            result = subprocess.run([sys.executable, 'temp_popup.py'],
-                                  capture_output=True, text=True, timeout=300)
-
-            os.remove('temp_popup.py')
-            return result.returncode == 0
+            print("✅ User completed manual intervention!")
+            return True
 
         except Exception as e:
-            try:
-                os.remove('temp_popup.py')
-            except:
-                pass
-            raise e
+            print(f"⚠️ Popup failed: {e}")
 
-    def _show_messagebox_popup(self, title, message, instructions=""):
-        """Simple messagebox as backup"""
-        import tkinter as tk
-        from tkinter import messagebox
-
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
-
-        full_message = f"{message}\n\n{instructions}" if instructions else message
-
-        result = messagebox.showinfo(
-            "LinkedIn Automation - Manual Action Required",
-            full_message
-        )
-
-        root.destroy()
-        return True
-
-    def _fallback_intervention(self, title, message, instructions=""):
-        """Fallback text-based intervention"""
-        print("\n" + "="*60)
-        print(f"🚨 MANUAL INTERVENTION REQUIRED: {title}")
-        print("="*60)
+        # Method 2: Terminal fallback (always works)
+        print("\n" + "🔴" * 30)
+        print("🚨 POPUP FAILED - USING TERMINAL")
+        print("🔴" * 30)
         print(f"📋 {message}")
         if instructions:
             print(f"💡 {instructions}")
-        print("="*60)
-        print("⌨️ Press ENTER when completed...")
-        print("="*60)
-        
+        print("🔴" * 30)
+        print("⌨️ Press ENTER after completing the action...")
+        print("🔴" * 30)
+
         try:
             input()
+            print("✅ User confirmed via terminal!")
             return True
-        except KeyboardInterrupt:
+        except:
+            print("❌ User cancelled")
             return False
+
+
+
+
 
     def detect_manual_intervention_needed(self):
         """AI-enhanced detection of manual intervention needs"""
@@ -726,8 +511,293 @@ if __name__ == "__main__":
             print(f"❌ Search failed: {e}")
             return False
 
+    def get_job_listings(self):
+        """Get job listings from current page"""
+        try:
+            # Use AI to find job listings if available
+            if self.use_ai:
+                job_elements = self.smart_find_elements(
+                    "job listing cards or items on the page",
+                    [
+                        ".jobs-search-results__list-item",
+                        ".job-card-container",
+                        "[data-job-id]",
+                        ".scaffold-layout__list-item",
+                        ".jobs-search-results-list__item"
+                    ]
+                )
+            else:
+                # Fallback selectors
+                selectors = [
+                    ".jobs-search-results__list-item",
+                    ".job-card-container",
+                    "[data-job-id]",
+                    ".scaffold-layout__list-item",
+                    ".jobs-search-results-list__item"
+                ]
+
+                job_elements = []
+                for selector in selectors:
+                    try:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        if elements:
+                            job_elements = elements
+                            print(f"✅ Found {len(elements)} jobs using: {selector}")
+                            break
+                    except:
+                        continue
+
+            return job_elements
+
+        except Exception as e:
+            print(f"❌ Error getting job listings: {e}")
+            return []
+
+    def smart_find_elements(self, description, fallback_selectors):
+        """Find multiple elements using AI + fallback"""
+        all_selectors = []
+
+        # Get AI suggestions
+        if self.use_ai:
+            ai_selectors = self.ai_find_elements(description)
+            all_selectors.extend(ai_selectors)
+
+        # Add fallback selectors
+        all_selectors.extend(fallback_selectors)
+
+        # Try each selector
+        for selector in all_selectors:
+            try:
+                if selector.startswith("//"):
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                else:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+
+                if elements:
+                    print(f"✅ Found {len(elements)} elements using: {selector}")
+                    return elements
+            except:
+                continue
+
+        print(f"❌ Could not find: {description}")
+        return []
+
+    def apply_to_job(self, job_element):
+        """Apply to a single job"""
+        try:
+            # Scroll job into view and click
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", job_element)
+            self.human_delay(1, 2)
+
+            # Click on the job listing
+            job_element.click()
+            self.human_delay(2, 3)
+
+            # Check for manual intervention
+            if self.detect_manual_intervention_needed():
+                return False
+
+            # Get job title for logging
+            try:
+                job_title_selectors = [
+                    "h1",
+                    ".job-details-jobs-unified-top-card__job-title",
+                    ".jobs-unified-top-card__job-title",
+                    "[data-job-title]"
+                ]
+
+                job_title = "Unknown Position"
+                for selector in job_title_selectors:
+                    try:
+                        title_element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                        if title_element and title_element.text.strip():
+                            job_title = title_element.text.strip()
+                            break
+                    except:
+                        continue
+
+                print(f"📝 Applying to: {job_title}")
+            except:
+                print("📝 Applying to job...")
+
+            # Find Easy Apply button
+            easy_apply_button = self.smart_find_element(
+                "Easy Apply button for job application",
+                [
+                    "//button[contains(@aria-label, 'Easy Apply')]",
+                    "//button[contains(text(), 'Easy Apply')]",
+                    ".jobs-apply-button",
+                    "[data-control-name='jobdetails_topcard_inapply']"
+                ]
+            )
+
+            if not easy_apply_button:
+                print("❌ No Easy Apply button found, skipping...")
+                return False
+
+            # Click Easy Apply
+            easy_apply_button.click()
+            self.human_delay(2, 3)
+
+            # Check for manual intervention after clicking
+            if self.detect_manual_intervention_needed():
+                return False
+
+            # Handle application process
+            return self.complete_application()
+
+        except Exception as e:
+            print(f"❌ Error applying to job: {e}")
+            return False
+
+    def complete_application(self):
+        """Complete the Easy Apply application process"""
+        try:
+            max_steps = 5  # Prevent infinite loops
+            current_step = 0
+
+            while current_step < max_steps:
+                current_step += 1
+                print(f"📋 Application step {current_step}...")
+
+                # Check for manual intervention
+                if self.detect_manual_intervention_needed():
+                    return True  # Count as success since user will handle it
+
+                # Look for submit button (final step)
+                submit_selectors = [
+                    "//button[contains(@aria-label, 'Submit application')]",
+                    "//button[contains(text(), 'Submit application')]",
+                    "//button[contains(text(), 'Submit')]",
+                    "[data-control-name='continue_unify']"
+                ]
+
+                submit_button = None
+                for selector in submit_selectors:
+                    try:
+                        if selector.startswith("//"):
+                            submit_button = self.driver.find_element(By.XPATH, selector)
+                        else:
+                            submit_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                        if submit_button and submit_button.is_displayed() and submit_button.is_enabled():
+                            break
+                    except:
+                        continue
+
+                if submit_button:
+                    submit_button.click()
+                    print("✅ Application submitted!")
+                    self.applications_sent += 1
+                    self.human_delay(2, 3)
+                    return True
+
+                # Look for Next/Continue button
+                next_selectors = [
+                    "//button[contains(text(), 'Next')]",
+                    "//button[contains(text(), 'Continue')]",
+                    "//button[contains(@aria-label, 'Continue')]",
+                    "[data-control-name='continue_unify']"
+                ]
+
+                next_button = None
+                for selector in next_selectors:
+                    try:
+                        if selector.startswith("//"):
+                            next_button = self.driver.find_element(By.XPATH, selector)
+                        else:
+                            next_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                        if next_button and next_button.is_displayed() and next_button.is_enabled():
+                            break
+                    except:
+                        continue
+
+                if next_button:
+                    next_button.click()
+                    self.human_delay(2, 3)
+                    continue
+
+                # If no next or submit button, might be complex application
+                print("⚠️ Complex application detected - may require manual completion")
+                if self.show_manual_intervention_popup(
+                    "📝 Complex Application",
+                    "This job application requires additional information or has multiple steps.\n\nPlease complete the application manually in the browser.",
+                    "Fill out all required fields and submit, then click 'OK' to continue automation"
+                ):
+                    return True  # Count as success
+                else:
+                    return False
+
+            print("⚠️ Application process exceeded maximum steps")
+            return False
+
+        except Exception as e:
+            print(f"❌ Error completing application: {e}")
+            return False
+
+    def close_modal(self):
+        """Close any open modals or popups"""
+        try:
+            close_selectors = [
+                "//button[@aria-label='Dismiss']",
+                "//button[contains(text(), 'Discard')]",
+                ".artdeco-modal__dismiss",
+                "[data-control-name='overlay.close_button']"
+            ]
+
+            for selector in close_selectors:
+                try:
+                    if selector.startswith("//"):
+                        close_button = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        close_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                    if close_button and close_button.is_displayed():
+                        close_button.click()
+                        self.human_delay(1, 2)
+                        return True
+                except:
+                    continue
+
+            return False
+        except:
+            return False
+
+    def go_to_next_page(self):
+        """Navigate to next page of job results"""
+        try:
+            next_page_selectors = [
+                "//button[@aria-label='View next page']",
+                "//button[contains(text(), 'Next')]",
+                ".artdeco-pagination__button--next",
+                "[data-control-name='pagination-next']"
+            ]
+
+            for selector in next_page_selectors:
+                try:
+                    if selector.startswith("//"):
+                        next_button = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        next_button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                    if next_button and next_button.is_displayed() and next_button.is_enabled():
+                        next_button.click()
+                        print("📄 Moving to next page...")
+                        self.human_delay(3, 5)
+                        return True
+                except:
+                    continue
+
+            print("📄 No more pages available")
+            return False
+
+        except Exception as e:
+            print(f"❌ Error navigating to next page: {e}")
+            return False
+
     def run(self):
-        """Main AI-enhanced execution"""
+        """Main AI-enhanced execution with complete job application process"""
         print("🤖 AI-Enhanced LinkedIn Auto Applier Starting...")
         print("=" * 60)
 
@@ -767,18 +837,88 @@ if __name__ == "__main__":
                 self.human_delay(3, 5)
                 print("✅ Easy Apply filter applied!")
 
-            print(f"\n🎉 AI-Enhanced Setup Complete!")
-            print(f"📊 Ready to apply to {self.keywords} jobs")
+            print(f"\n🚀 Starting Job Application Process...")
             print(f"🎯 Target: {self.max_applications} applications")
-            print(f"🤖 AI Status: {'Active' if self.use_ai else 'Inactive'}")
+            print(f"🔍 Keywords: {self.keywords}")
+            print(f"📍 Location: {self.location}")
+            print("=" * 60)
 
-            print("\n🔍 Keeping browser open for inspection...")
-            time.sleep(60)
+            # Main application loop
+            page_number = 1
+            consecutive_failures = 0
+            max_consecutive_failures = 5
+
+            while self.applications_sent < self.max_applications:
+                print(f"\n📄 Processing page {page_number}...")
+
+                # Get job listings on current page
+                job_listings = self.get_job_listings()
+
+                if not job_listings:
+                    print("❌ No job listings found on this page")
+                    consecutive_failures += 1
+
+                    if consecutive_failures >= max_consecutive_failures:
+                        print("❌ Too many consecutive failures, stopping...")
+                        break
+
+                    # Try next page
+                    if not self.go_to_next_page():
+                        print("❌ No more pages available")
+                        break
+
+                    page_number += 1
+                    continue
+
+                consecutive_failures = 0  # Reset failure counter
+                print(f"✅ Found {len(job_listings)} job listings")
+
+                # Apply to each job on current page
+                for i, job_listing in enumerate(job_listings):
+                    if self.applications_sent >= self.max_applications:
+                        print(f"🎯 Reached maximum applications ({self.max_applications})")
+                        break
+
+                    print(f"\n📋 Job {i+1}/{len(job_listings)} on page {page_number}")
+
+                    try:
+                        success = self.apply_to_job(job_listing)
+
+                        if success:
+                            print(f"✅ Application successful! Total: {self.applications_sent}/{self.max_applications}")
+                        else:
+                            print("❌ Application failed or skipped")
+
+                        # Human-like delay between applications
+                        self.human_delay(3, 8)
+
+                    except Exception as e:
+                        print(f"❌ Error processing job: {e}")
+                        continue
+
+                # Check if we need to continue to next page
+                if self.applications_sent < self.max_applications:
+                    if not self.go_to_next_page():
+                        print("📄 No more pages available")
+                        break
+                    page_number += 1
+                else:
+                    break
+
+            # Final summary
+            print("\n" + "=" * 60)
+            print("🎉 Job Application Process Complete!")
+            print(f"📊 Total applications sent: {self.applications_sent}")
+            print(f"🎯 Target was: {self.max_applications}")
+            print(f"📈 Success rate: {(self.applications_sent/self.max_applications)*100:.1f}%")
+            print("=" * 60)
 
         except KeyboardInterrupt:
-            print("\n⚠️ Process interrupted")
+            print("\n⚠️ Process interrupted by user")
+            print(f"📊 Applications sent before interruption: {self.applications_sent}")
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Unexpected error: {e}")
+            print(f"📊 Applications sent before error: {self.applications_sent}")
         finally:
             print("\n👋 Closing browser...")
             self.driver.quit()
