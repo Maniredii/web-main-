@@ -1,13 +1,13 @@
 {
   "personal_info": {
-    "name": "Your Name",
-    "email": "your.email@example.com",
+    "name": "Alex Johnson",
+    "email": "alex.johnson.dev@gmail.com",
     "phone": "(555) 123-4567",
-    "linkedin": "https://linkedin.com/in/yourprofile",
-    "github": "https://github.com/yourusername",
-    "portfolio": "https://yourportfolio.com",
+    "linkedin": "https://linkedin.com/in/alexjohnsondev",
+    "github": "https://github.com/alexjohnsondev",
+    "portfolio": "https://alexjohnson.dev",
     "resume_path": "resume.pdf",
-    "cover_letter_template": "I am excited to apply for the {position} role at {company}..."
+    "cover_letter_template": "I am excited to apply for the {position} role at {company}. With my background in software development and passion for technology, I believe I would be a great fit for your team."
   },
   "job_criteria": {
     "required_keywords": [
@@ -42,11 +42,12 @@
     ]
   },
   "application_settings": {
-    "max_applications_per_day": 25,
-    "max_applications_per_site": 15,
+    "max_applications_per_session": 10,
+    "max_applications_per_site": 5,
     "apply_to_new_postings_only": true,
     "skip_cover_letter_required": false,
-    "auto_answer_questions": true
+    "auto_answer_questions": true,
+    "preferred_sites": ["Stealth Sites", "LinkedIn", "Indeed"]
   },
   "job_sites": {
     "linkedin": {
