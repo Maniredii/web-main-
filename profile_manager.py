@@ -9,15 +9,19 @@ import os
 import re
 import shutil
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from tkinter import ttk, filedialog, messagebox, simpledialog
+from typing import Dict, Any, List, Optional, Tuple, Callable
+from dataclasses import dataclass, asdict, field
 from datetime import datetime
 import logging
 from pathlib import Path
 import hashlib
 import base64
-from cryptography.fernet import Fernet
+try:
+    from cryptography.fernet import Fernet
+except ImportError:
+    print("Warning: cryptography package not installed. Encryption features will be disabled.")
+    Fernet = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -48,9 +52,9 @@ class ProfessionalInfo:
     """Professional information data structure"""
     current_title: str = ""
     experience_years: int = 0
-    skills: List[str] = None
+    skills: List[str] = field(default_factory=list)
     education: str = ""
-    certifications: List[str] = None
+    certifications: List[str] = field(default_factory=list)
     desired_salary: str = ""
     summary: str = ""
     
@@ -64,18 +68,18 @@ class ProfessionalInfo:
 @dataclass
 class SearchCriteria:
     """Job search criteria data structure"""
-    keywords: List[str] = None
+    keywords: List[str] = field(default_factory=list)
     location: str = ""
     experience_level: str = "Mid-Senior level"
     remote_preference: bool = True
     salary_range: str = ""
-    job_types: List[str] = None
+    job_types: List[str] = field(default_factory=list)
     max_applications: int = 10
     
     def __post_init__(self):
-        if self.keywords is None:
+        if not self.keywords:
             self.keywords = []
-        if self.job_types is None:
+        if not self.job_types:
             self.job_types = ["Full-time"]
 
 
@@ -90,10 +94,10 @@ class DocumentPaths:
 @dataclass
 class UserProfile:
     """Complete user profile"""
-    personal_info: PersonalInfo = None
-    professional_info: ProfessionalInfo = None
-    search_criteria: SearchCriteria = None
-    document_paths: DocumentPaths = None
+    personal_info: PersonalInfo = field(default_factory=PersonalInfo)
+    professional_info: ProfessionalInfo = field(default_factory=ProfessionalInfo)
+    search_criteria: SearchCriteria = field(default_factory=SearchCriteria)
+    document_paths: DocumentPaths = field(default_factory=DocumentPaths)
     created_at: str = ""
     updated_at: str = ""
     version: str = "1.0"
@@ -225,24 +229,26 @@ class ProfileSecurity:
     
     def _generate_key(self) -> bytes:
         """Generate encryption key from password"""
+        if not self.password:
+            return b''
         password_bytes = self.password.encode('utf-8')
         key = hashlib.pbkdf2_hmac('sha256', password_bytes, b'salt_', 100000)
         return base64.urlsafe_b64encode(key)
     
     def encrypt_data(self, data: str) -> str:
         """Encrypt profile data"""
-        if not self.key:
+        if not self.key or Fernet is None:
             return data
-        
+
         fernet = Fernet(self.key)
         encrypted_data = fernet.encrypt(data.encode('utf-8'))
         return base64.urlsafe_b64encode(encrypted_data).decode('utf-8')
     
     def decrypt_data(self, encrypted_data: str) -> str:
         """Decrypt profile data"""
-        if not self.key:
+        if not self.key or Fernet is None:
             return encrypted_data
-        
+
         try:
             fernet = Fernet(self.key)
             decoded_data = base64.urlsafe_b64decode(encrypted_data.encode('utf-8'))
@@ -453,7 +459,7 @@ class ProfileTemplates:
         return profile
 
     @staticmethod
-    def get_available_templates() -> Dict[str, callable]:
+    def get_available_templates() -> Dict[str, Callable]:
         """Get all available templates"""
         return {
             "Software Engineer": ProfileTemplates.get_software_engineer_template,
@@ -1028,7 +1034,7 @@ class ProfileManagerGUI:
 
         # Check if file is encrypted
         if filename.endswith('.encrypted'):
-            password = tk.simpledialog.askstring("Password", "Enter encryption password:", show='*')
+            password = simpledialog.askstring("Password", "Enter encryption password:", show='*')
             if not password:
                 return
             security = ProfileSecurity(password)
@@ -1710,7 +1716,6 @@ class ProfileManagerCLI:
 def main():
     """Main entry point"""
     import sys
-    import tkinter.simpledialog
 
     if len(sys.argv) > 1 and sys.argv[1] == '--cli':
         # Run CLI interface

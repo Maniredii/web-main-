@@ -11,6 +11,7 @@ services:
       - ./job_config.json:/app/job_config.json
       - ./data:/app/data
       - ollama_models:/root/.ollama
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     environment:
       - PYTHONPATH=/app/src
       - OLLAMA_HOST=0.0.0.0:11434
@@ -21,11 +22,6 @@ services:
     # For GUI applications (browser automation)
     network_mode: host
     privileged: true
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ./job_config.json:/app/job_config.json
-      - ./data:/app/data
-      - ollama_models:/root/.ollama
 
 volumes:
   ollama_models:
