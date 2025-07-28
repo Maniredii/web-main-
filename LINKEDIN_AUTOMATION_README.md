@@ -31,6 +31,34 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configure Profile
+
+**🎯 NEW: Enhanced Profile Management System Available!**
+
+#### Option A: GUI Profile Manager (Recommended)
+```bash
+python profile_manager.py
+```
+- User-friendly graphical interface
+- Built-in validation and templates
+- Secure profile encryption
+- Easy profile editing and backup
+
+#### Option B: CLI Profile Manager
+```bash
+python profile_manager.py --cli
+```
+- Command-line interface for headless environments
+- Interactive profile creation
+- Template support
+
+#### Option C: Quick Sample Profile (for testing)
+```bash
+python create_sample_profile.py
+```
+- Creates a ready-to-use sample profile
+- Perfect for testing the automation
+
+#### Option D: Manual Configuration (Legacy)
 Edit `user_profile.json` with your information:
 ```json
 {
@@ -51,6 +79,8 @@ Edit `user_profile.json` with your information:
   "resume_path": "path/to/resume.pdf"
 }
 ```
+
+📖 **For detailed profile management documentation, see [PROFILE_MANAGER_README.md](PROFILE_MANAGER_README.md)**
 
 ### 4. Set Environment Variables
 ```bash
