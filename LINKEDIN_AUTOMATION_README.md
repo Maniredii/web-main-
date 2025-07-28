@@ -2,6 +2,22 @@
 
 Consolidated LinkedIn job application automation with Ollama AI intelligence.
 
+## ⚡ Quick Start (2 Steps)
+
+**New users start here:**
+
+```bash
+# 1. Set up your details (one-time setup)
+python setup_my_details.py
+
+# 2. Run the automation
+python linkedin_ollama_automation.py
+```
+
+**That's it!** The automation will automatically use your details for job applications.
+
+📖 **Need help?** See [USER_DETAILS_README.md](USER_DETAILS_README.md) for detailed setup instructions.
+
 ## 🎯 Features
 
 - **AI-Powered Job Analysis**: Uses Ollama to analyze job compatibility
@@ -32,9 +48,23 @@ pip install -r requirements.txt
 
 ### 3. Configure Profile
 
-**🎯 NEW: Enhanced Profile Management System Available!**
+**🆕 NEW: Simple User Details Setup (Easiest)**
 
-#### Option A: GUI Profile Manager (Recommended)
+#### Option A: Interactive Setup (Recommended for New Users)
+```bash
+python setup_my_details.py
+```
+- ✅ **Easiest setup** - Interactive questions guide you through
+- ✅ **One-time configuration** - Set up once, use forever
+- ✅ **Automatic validation** - Catches errors before you start
+- ✅ **Multiple formats** - Choose JSON or simple text format
+- ✅ **Ready to use** - Works immediately with automation
+
+📖 **For detailed user details documentation, see [USER_DETAILS_README.md](USER_DETAILS_README.md)**
+
+**🎯 Advanced: Enhanced Profile Management System**
+
+#### Option B: GUI Profile Manager (Advanced Users)
 ```bash
 python profile_manager.py
 ```
@@ -43,7 +73,7 @@ python profile_manager.py
 - Secure profile encryption
 - Easy profile editing and backup
 
-#### Option B: CLI Profile Manager
+#### Option C: CLI Profile Manager (Advanced Users)
 ```bash
 python profile_manager.py --cli
 ```
@@ -51,14 +81,14 @@ python profile_manager.py --cli
 - Interactive profile creation
 - Template support
 
-#### Option C: Quick Sample Profile (for testing)
+#### Option D: Quick Sample Profile (for testing)
 ```bash
 python create_sample_profile.py
 ```
 - Creates a ready-to-use sample profile
 - Perfect for testing the automation
 
-#### Option D: Manual Configuration (Legacy)
+#### Option E: Manual Configuration (Legacy)
 Edit `user_profile.json` with your information:
 ```json
 {

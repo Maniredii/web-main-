@@ -41,6 +41,14 @@ except ImportError:
     PROFILE_INTEGRATION_AVAILABLE = False
     logger.warning("Profile integration not available - using legacy profile loading")
 
+# Import user details loader
+try:
+    from user_details_loader import UserDetailsLoader
+    USER_DETAILS_AVAILABLE = True
+except ImportError:
+    USER_DETAILS_AVAILABLE = False
+    logger.warning("User details loader not available")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -136,8 +144,23 @@ class LinkedInOllamaAutomation:
         # Initialize profile system
         self.profile_adapter = None
         self.field_mapper = None
+        self.user_details = None
 
-        if PROFILE_INTEGRATION_AVAILABLE:
+        # Try to load user details first (new simple system)
+        if USER_DETAILS_AVAILABLE:
+            try:
+                self.user_details = UserDetailsLoader()
+                if self.user_details.is_configured():
+                    logger.info("✅ Using user details configuration")
+                else:
+                    logger.warning("⚠️ User details not configured, falling back to profile system")
+                    self.user_details = None
+            except Exception as e:
+                logger.warning(f"⚠️ User details loader failed: {e}")
+                self.user_details = None
+
+        # Try enhanced profile system if user details not available
+        if not self.user_details and PROFILE_INTEGRATION_AVAILABLE:
             try:
                 self.profile_adapter = AutomationProfileAdapter(profile_path)
                 if self.profile_adapter.profile:
@@ -148,8 +171,10 @@ class LinkedInOllamaAutomation:
             except Exception as e:
                 logger.warning(f"⚠️ Profile adapter failed: {e}, using legacy system")
 
-        # Load user profile (legacy or enhanced)
-        if self.profile_adapter:
+        # Load user profile (user details, enhanced, or legacy)
+        if self.user_details:
+            self.profile = self._convert_user_details_to_profile()
+        elif self.profile_adapter:
             self.profile = self.profile_adapter.get_profile_dict()
         else:
             self.profile = self._load_profile(profile_path)
@@ -181,6 +206,49 @@ class LinkedInOllamaAutomation:
         self.driver = None
         self.wait = None
     
+    def _convert_user_details_to_profile(self) -> Dict[str, Any]:
+        """Convert user details to profile format"""
+        personal = self.user_details.get_personal_info()
+        professional = self.user_details.get_professional_info()
+        job_prefs = self.user_details.get_job_preferences()
+        app_settings = self.user_details.get_application_settings()
+
+        # Convert to legacy profile format
+        profile = {
+            'personal_info': {
+                'name': personal.get('name', ''),
+                'email': personal.get('email', ''),
+                'phone': personal.get('phone', ''),
+                'location': personal.get('location', ''),
+                'linkedin_url': personal.get('linkedin_url', ''),
+                'website': personal.get('website', '')
+            },
+            'professional_info': {
+                'current_title': professional.get('current_title', ''),
+                'experience_years': professional.get('experience_years', 0),
+                'skills': professional.get('skills', []),
+                'summary': professional.get('summary', ''),
+                'education': professional.get('education', ''),
+                'certifications': professional.get('certifications', [])
+            },
+            'search_criteria': {
+                'keywords': job_prefs.get('desired_roles', ['Software Engineer']),
+                'location': personal.get('location', ''),
+                'experience_level': job_prefs.get('experience_level', 'Mid-Senior level'),
+                'job_type': job_prefs.get('work_type', 'Full-time'),
+                'remote': job_prefs.get('remote_preference', 'Hybrid')
+            },
+            'application_settings': {
+                'max_applications_per_day': app_settings.get('max_applications_per_day', 10),
+                'auto_apply_easy_apply_only': app_settings.get('auto_apply_easy_apply_only', True),
+                'skip_companies': app_settings.get('skip_companies', []),
+                'preferred_companies': app_settings.get('preferred_companies', [])
+            }
+        }
+
+        logger.info("✅ User details converted to profile format")
+        return profile
+
     def _load_profile(self, profile_path: str) -> Dict[str, Any]:
         """Load user profile from JSON file"""
         try:
@@ -648,8 +716,42 @@ Best regards,
 
     def _get_field_value(self, field_name: str, field_label: str, field_type: str) -> str:
         """Get appropriate value for form field"""
+        # Use user details system if available (highest priority)
+        if self.user_details:
+            field_text = f"{field_name} {field_label}".lower()
+
+            # Try direct field mapping first
+            for field_key in [field_name.lower(), field_label.lower().replace(' ', '_')]:
+                value = self.user_details.get_field_value(field_key)
+                if value:
+                    return value
+
+            # Try pattern matching
+            if any(term in field_text for term in ['first', 'fname', 'given']):
+                return self.user_details.get_field_value('first_name')
+            elif any(term in field_text for term in ['last', 'lname', 'surname']):
+                return self.user_details.get_field_value('last_name')
+            elif any(term in field_text for term in ['email', 'mail']):
+                return self.user_details.get_field_value('email')
+            elif any(term in field_text for term in ['phone', 'tel', 'mobile']):
+                return self.user_details.get_field_value('phone')
+            elif any(term in field_text for term in ['location', 'city', 'address']):
+                return self.user_details.get_field_value('location')
+            elif any(term in field_text for term in ['linkedin']):
+                return self.user_details.get_field_value('linkedin')
+            elif any(term in field_text for term in ['website', 'portfolio']):
+                return self.user_details.get_field_value('website')
+            elif any(term in field_text for term in ['title', 'position', 'role']):
+                return self.user_details.get_field_value('current_title')
+            elif any(term in field_text for term in ['experience', 'years']):
+                return str(self.user_details.get_field_value('experience'))
+            elif any(term in field_text for term in ['education', 'degree']):
+                return self.user_details.get_field_value('education')
+            elif any(term in field_text for term in ['summary', 'about']):
+                return self.user_details.get_field_value('summary')
+
         # Use enhanced profile system if available
-        if self.field_mapper:
+        elif self.field_mapper:
             value = self.field_mapper.get_field_value(field_name, field_label)
             if value:
                 return value
