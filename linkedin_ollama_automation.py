@@ -33,6 +33,14 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
+# Import profile integration
+try:
+    from profile_integration import AutomationProfileAdapter, FormFieldMapper
+    PROFILE_INTEGRATION_AVAILABLE = True
+except ImportError:
+    PROFILE_INTEGRATION_AVAILABLE = False
+    logger.warning("Profile integration not available - using legacy profile loading")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -124,9 +132,28 @@ class LinkedInOllamaAutomation:
     
     def __init__(self, profile_path: str = "user_profile.json", strategy: AutomationStrategy = AutomationStrategy.ADAPTIVE):
         load_dotenv()
-        
-        # Load user profile
-        self.profile = self._load_profile(profile_path)
+
+        # Initialize profile system
+        self.profile_adapter = None
+        self.field_mapper = None
+
+        if PROFILE_INTEGRATION_AVAILABLE:
+            try:
+                self.profile_adapter = AutomationProfileAdapter(profile_path)
+                if self.profile_adapter.profile:
+                    self.field_mapper = FormFieldMapper(self.profile_adapter.profile)
+                    logger.info("✅ Using enhanced profile management system")
+                else:
+                    logger.warning("⚠️ No profile found in enhanced system, falling back to legacy")
+            except Exception as e:
+                logger.warning(f"⚠️ Profile adapter failed: {e}, using legacy system")
+
+        # Load user profile (legacy or enhanced)
+        if self.profile_adapter:
+            self.profile = self.profile_adapter.get_profile_dict()
+        else:
+            self.profile = self._load_profile(profile_path)
+
         self.strategy = strategy
         
         # Initialize Ollama
@@ -621,6 +648,13 @@ Best regards,
 
     def _get_field_value(self, field_name: str, field_label: str, field_type: str) -> str:
         """Get appropriate value for form field"""
+        # Use enhanced profile system if available
+        if self.field_mapper:
+            value = self.field_mapper.get_field_value(field_name, field_label)
+            if value:
+                return value
+
+        # Fallback to legacy system
         field_text = f"{field_name} {field_label}".lower()
 
         # Personal information
