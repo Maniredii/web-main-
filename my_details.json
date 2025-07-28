@@ -1,0 +1,99 @@
+{
+  "_instructions": {
+    "description": "📋 Your Personal Details for Job Applications",
+    "how_to_use": [
+      "1. Fill in your information in the sections below",
+      "2. Replace the placeholder text with your actual details", 
+      "3. Save this file after making changes",
+      "4. The LinkedIn automation will automatically use these details",
+      "5. Keep this file updated with your latest information"
+    ],
+    "required_fields": ["name", "email"],
+    "optional_fields": ["phone", "location", "linkedin_url", "website", "current_title", "experience_years", "skills"],
+    "privacy_note": "Keep this file secure - it contains your personal information"
+  },
+
+  "personal_info": {
+    "name": "YOUR FULL NAME HERE",
+    "email": "your.email@example.com", 
+    "phone": "+1-555-123-4567",
+    "location": "Your City, State, Country",
+    "linkedin_url": "https://linkedin.com/in/yourusername",
+    "website": "https://yourwebsite.com"
+  },
+
+  "professional_info": {
+    "current_title": "Your Current Job Title",
+    "experience_years": 5,
+    "skills": [
+      "Skill 1",
+      "Skill 2", 
+      "Skill 3",
+      "Add more skills here"
+    ],
+    "summary": "Brief professional summary about yourself and your career goals",
+    "education": "Your highest degree and university",
+    "certifications": [
+      "Certification 1",
+      "Certification 2"
+    ]
+  },
+
+  "job_search_preferences": {
+    "desired_roles": [
+      "Job Title 1",
+      "Job Title 2",
+      "Job Title 3"
+    ],
+    "preferred_locations": [
+      "City 1, State",
+      "City 2, State", 
+      "Remote"
+    ],
+    "salary_expectations": {
+      "minimum": 50000,
+      "preferred": 75000,
+      "currency": "USD"
+    },
+    "work_type": "Full-time",
+    "remote_preference": "Hybrid",
+    "experience_level": "Mid-Senior level"
+  },
+
+  "documents": {
+    "resume_path": "path/to/your/resume.pdf",
+    "cover_letter_template": "path/to/your/cover_letter_template.docx",
+    "portfolio_url": "https://yourportfolio.com"
+  },
+
+  "application_settings": {
+    "max_applications_per_day": 10,
+    "auto_apply_easy_apply_only": true,
+    "skip_companies": [
+      "Company to avoid 1",
+      "Company to avoid 2"
+    ],
+    "preferred_companies": [
+      "Dream Company 1",
+      "Dream Company 2"
+    ]
+  },
+
+  "_examples": {
+    "description": "Example entries to guide you (delete this section after filling your info)",
+    "personal_info_example": {
+      "name": "John Smith",
+      "email": "john.smith@gmail.com",
+      "phone": "+1-555-987-6543", 
+      "location": "San Francisco, CA, USA",
+      "linkedin_url": "https://linkedin.com/in/johnsmith",
+      "website": "https://johnsmith.dev"
+    },
+    "professional_info_example": {
+      "current_title": "Senior Software Engineer",
+      "experience_years": 7,
+      "skills": ["Python", "JavaScript", "React", "AWS", "Docker"],
+      "summary": "Experienced software engineer with 7+ years building scalable web applications"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+# 📋 MY PERSONAL DETAILS FOR JOB APPLICATIONS
+# =====================================================
+# 
+# INSTRUCTIONS:
+# 1. Fill in your information below each section
+# 2. Replace the placeholder text with your actual details
+# 3. Save this file after making changes
+# 4. The LinkedIn automation will automatically use these details
+# 5. Keep this file updated with your latest information
+#
+# REQUIRED: Name and Email
+# OPTIONAL: All other fields (but recommended for better results)
+# =====================================================
+
+# ===== PERSONAL INFORMATION =====
+FULL_NAME: YOUR FULL NAME HERE
+EMAIL: your.email@example.com
+PHONE: +1-555-123-4567
+LOCATION: Your City, State, Country
+LINKEDIN: https://linkedin.com/in/yourusername
+WEBSITE: https://yourwebsite.com
+
+# ===== PROFESSIONAL INFORMATION =====
+CURRENT_JOB_TITLE: Your Current Job Title
+YEARS_OF_EXPERIENCE: 5
+EDUCATION: Your highest degree and university
+
+# SKILLS (one per line, add as many as needed)
+SKILLS:
+Skill 1
+Skill 2
+Skill 3
+Add more skills here
+
+# PROFESSIONAL SUMMARY (2-3 sentences about yourself)
+SUMMARY: Brief professional summary about yourself and your career goals
+
+# CERTIFICATIONS (one per line)
+CERTIFICATIONS:
+Certification 1
+Certification 2
+
+# ===== JOB SEARCH PREFERENCES =====
+# DESIRED JOB TITLES (one per line)
+DESIRED_ROLES:
+Job Title 1
+Job Title 2
+Job Title 3
+
+# PREFERRED WORK LOCATIONS (one per line)
+PREFERRED_LOCATIONS:
+City 1, State
+City 2, State
+Remote
+
+# SALARY EXPECTATIONS
+MINIMUM_SALARY: 50000
+PREFERRED_SALARY: 75000
+SALARY_CURRENCY: USD
+
+# WORK PREFERENCES
+WORK_TYPE: Full-time
+REMOTE_PREFERENCE: Hybrid
+EXPERIENCE_LEVEL: Mid-Senior level
+
+# ===== DOCUMENTS =====
+RESUME_PATH: path/to/your/resume.pdf
+COVER_LETTER_PATH: path/to/your/cover_letter_template.docx
+PORTFOLIO_URL: https://yourportfolio.com
+
+# ===== APPLICATION SETTINGS =====
+MAX_APPLICATIONS_PER_DAY: 10
+EASY_APPLY_ONLY: true
+
+# COMPANIES TO AVOID (one per line)
+SKIP_COMPANIES:
+Company to avoid 1
+Company to avoid 2
+
+# PREFERRED COMPANIES (one per line)
+PREFERRED_COMPANIES:
+Dream Company 1
+Dream Company 2
+
+# =====================================================
+# EXAMPLES (for reference - delete after filling your info):
+#
+# FULL_NAME: John Smith
+# EMAIL: john.smith@gmail.com
+# PHONE: +1-555-987-6543
+# LOCATION: San Francisco, CA, USA
+# LINKEDIN: https://linkedin.com/in/johnsmith
+# WEBSITE: https://johnsmith.dev
+# CURRENT_JOB_TITLE: Senior Software Engineer
+# YEARS_OF_EXPERIENCE: 7
+# SKILLS: Python, JavaScript, React, AWS, Docker
+# SUMMARY: Experienced software engineer with 7+ years building scalable web applications
+# =====================================================
