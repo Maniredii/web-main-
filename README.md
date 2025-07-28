@@ -28,17 +28,20 @@ playwright install chromium
 ```
 
 ### 3. Configure Your Info
-Edit `job_config.json` with your personal information
+Edit `user_profile.json` with your personal information and set your LinkedIn password:
+```bash
+export LINKEDIN_PASSWORD="your_password"
+```
 
 ### 4. Start Applying!
 ```bash
-python job_applier.py
+python linkedin_ollama_automation.py
 ```
 
-## 🧪 Test Setup
-```bash
-python test_setup.py
-```
+## 📚 Documentation
+- See `LINKEDIN_AUTOMATION_README.md` for detailed setup and usage
+- Configure automation settings in `automation_config.json`
+- Monitor applications with detailed JSON reports
 
 ## 💡 Why This is Better
 
