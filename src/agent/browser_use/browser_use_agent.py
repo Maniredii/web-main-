@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import requests
+import json
+from typing import Optional, Dict, Any
 
 # from lmnr.sdk.decorators import observe
 from browser_use.agent.gif import create_history_gif
@@ -28,6 +31,102 @@ SKIP_LLM_API_KEY_VERIFICATION = (
 
 
 class BrowserUseAgent(Agent):
+    def __init__(self, *args, **kwargs):
+        """Initialize the agent with Ollama integration"""
+        super().__init__(*args, **kwargs)
+        self.ollama_config = self._setup_ollama_config()
+        self.ollama_available = self._check_ollama_availability()
+
+    def _setup_ollama_config(self) -> Dict[str, Any]:
+        """Setup Ollama configuration"""
+        return {
+            'base_url': os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434'),
+            'model': os.getenv('OLLAMA_MODEL', 'qwen2.5:7b'),
+            'temperature': float(os.getenv('OLLAMA_TEMPERATURE', '0.1')),
+            'max_tokens': int(os.getenv('OLLAMA_MAX_TOKENS', '1024'))
+        }
+
+    def _check_ollama_availability(self) -> bool:
+        """Check if Ollama is available and responsive"""
+        try:
+            response = requests.get(f"{self.ollama_config['base_url']}/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = response.json().get('models', [])
+                available_models = [model['name'] for model in models]
+                if self.ollama_config['model'] in available_models:
+                    logger.info(f"✅ Ollama available with model: {self.ollama_config['model']}")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Ollama model {self.ollama_config['model']} not found. Available: {available_models}")
+                    return False
+            return False
+        except Exception as e:
+            logger.warning(f"⚠️ Ollama not available: {e}")
+            return False
+
+    async def query_ollama(self, prompt: str, context: Optional[str] = None) -> Optional[str]:
+        """Query Ollama for intelligent responses"""
+        if not self.ollama_available:
+            return None
+
+        try:
+            full_prompt = f"{context}\n\n{prompt}" if context else prompt
+
+            response = requests.post(
+                f"{self.ollama_config['base_url']}/api/generate",
+                json={
+                    'model': self.ollama_config['model'],
+                    'prompt': full_prompt,
+                    'stream': False,
+                    'options': {
+                        'temperature': self.ollama_config['temperature'],
+                        'num_predict': self.ollama_config['max_tokens']
+                    }
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', '').strip()
+            else:
+                logger.error(f"Ollama API error: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Ollama query error: {e}")
+            return None
+
+    async def analyze_page_with_ollama(self, page_content: str, task_context: str) -> Optional[Dict[str, Any]]:
+        """Use Ollama to analyze page content and suggest next actions"""
+        if not self.ollama_available:
+            return None
+
+        prompt = f"""
+        Analyze this web page content and suggest the best next action for the given task.
+
+        Task: {task_context}
+
+        Page Content (first 1000 chars): {page_content[:1000]}
+
+        Please respond with a JSON object containing:
+        - "action": suggested action type (click, type, scroll, navigate, etc.)
+        - "element": description of element to interact with
+        - "reasoning": why this action is recommended
+        - "confidence": confidence level (0-1)
+
+        Respond with only valid JSON, no additional text.
+        """
+
+        response = await self.query_ollama(prompt)
+        if response:
+            try:
+                return json.loads(response)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse Ollama response as JSON")
+                return None
+        return None
+
     def _set_tool_calling_method(self) -> ToolCallingMethod | None:
         tool_calling_method = self.settings.tool_calling_method
         if tool_calling_method == 'auto':
