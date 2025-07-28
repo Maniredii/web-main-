@@ -1,0 +1,904 @@
+#!/usr/bin/env python3
+"""
+🚀 Consolidated LinkedIn Automation with Ollama Intelligence
+Complete LinkedIn job application automation with AI-powered decision making
+"""
+
+import asyncio
+import io
+import json
+import logging
+import os
+import random
+import requests
+import time
+import tkinter as tk
+from tkinter import messagebox
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+
+import cv2
+import numpy as np
+from PIL import Image
+from dotenv import load_dotenv
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class AutomationStrategy(Enum):
+    """Automation strategies"""
+    CONSERVATIVE = "conservative"
+    ADAPTIVE = "adaptive" 
+    AGGRESSIVE = "aggressive"
+
+
+@dataclass
+class JobListing:
+    """Job listing information"""
+    title: str
+    company: str
+    location: str
+    url: str
+    description: str = ""
+    salary: str = ""
+    posted_date: str = ""
+
+
+@dataclass
+class ApplicationResult:
+    """Application result tracking"""
+    job: JobListing
+    success: bool
+    reason: str
+    ai_confidence: float = 0.0
+    time_taken: float = 0.0
+
+
+class OllamaManager:
+    """Simplified Ollama integration"""
+    
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen2.5:7b"):
+        self.base_url = base_url
+        self.model = model
+        self.available = self._check_availability()
+    
+    def _check_availability(self) -> bool:
+        """Check if Ollama is available"""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = [m['name'] for m in response.json().get('models', [])]
+                if self.model in models:
+                    logger.info(f"✅ Ollama available with model: {self.model}")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Model {self.model} not found. Available: {models}")
+            return False
+        except Exception as e:
+            logger.warning(f"⚠️ Ollama not available: {e}")
+            return False
+    
+    def query(self, prompt: str, max_tokens: int = 512) -> Optional[str]:
+        """Query Ollama with prompt"""
+        if not self.available:
+            return None
+        
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    'model': self.model,
+                    'prompt': prompt,
+                    'stream': False,
+                    'options': {
+                        'temperature': 0.1,
+                        'num_predict': max_tokens
+                    }
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json().get('response', '').strip()
+            return None
+        except Exception as e:
+            logger.error(f"Ollama query error: {e}")
+            return None
+
+
+class LinkedInOllamaAutomation:
+    """Consolidated LinkedIn automation with Ollama intelligence"""
+    
+    def __init__(self, profile_path: str = "user_profile.json", strategy: AutomationStrategy = AutomationStrategy.ADAPTIVE):
+        load_dotenv()
+        
+        # Load user profile
+        self.profile = self._load_profile(profile_path)
+        self.strategy = strategy
+        
+        # Initialize Ollama
+        self.ollama = OllamaManager(
+            base_url=os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434'),
+            model=os.getenv('OLLAMA_MODEL', 'qwen2.5:7b')
+        )
+        
+        # LinkedIn credentials
+        self.email = self.profile['personal_info']['email']
+        self.password = os.getenv('LINKEDIN_PASSWORD')
+        
+        # Search criteria
+        search_criteria = self.profile['search_criteria']
+        self.keywords = search_criteria['keywords'][0] if search_criteria['keywords'] else "Software Engineer"
+        self.location = search_criteria['location']
+        self.experience_level = search_criteria.get('experience_level', 'Mid-Senior level')
+        
+        # Automation settings
+        self.max_applications = search_criteria.get('max_applications', 10)
+        self.applications_sent = 0
+        self.application_results: List[ApplicationResult] = []
+        
+        # Browser setup
+        self.driver = None
+        self.wait = None
+    
+    def _load_profile(self, profile_path: str) -> Dict[str, Any]:
+        """Load user profile from JSON file"""
+        try:
+            with open(profile_path, 'r') as f:
+                profile = json.load(f)
+            logger.info("✅ User profile loaded successfully")
+            return profile
+        except FileNotFoundError:
+            logger.error(f"❌ Profile file {profile_path} not found!")
+            raise
+        except json.JSONDecodeError:
+            logger.error(f"❌ Invalid JSON in {profile_path}!")
+            raise
+    
+    def setup_browser(self):
+        """Setup Chrome browser with stealth options"""
+        chrome_options = Options()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        
+        service = Service(ChromeDriverManager().install())
+        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        self.wait = WebDriverWait(self.driver, 10)
+        
+        logger.info("✅ Browser setup complete")
+    
+    def login_to_linkedin(self) -> bool:
+        """Login to LinkedIn with error handling"""
+        try:
+            logger.info("🔐 Logging into LinkedIn...")
+            self.driver.get("https://www.linkedin.com/login")
+            
+            # Wait for login form
+            email_field = self.wait.until(EC.presence_of_element_located((By.ID, "username")))
+            password_field = self.driver.find_element(By.ID, "password")
+            
+            # Enter credentials
+            email_field.send_keys(self.email)
+            time.sleep(random.uniform(1, 2))
+            password_field.send_keys(self.password)
+            time.sleep(random.uniform(1, 2))
+            
+            # Submit login
+            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            login_button.click()
+            
+            # Wait for successful login
+            time.sleep(5)
+            
+            # Check for security challenges
+            if "challenge" in self.driver.current_url or "checkpoint" in self.driver.current_url:
+                logger.warning("⚠️ Security challenge detected - manual intervention required")
+                self._handle_manual_intervention("Please complete the security challenge and press OK")
+            
+            # Verify login success
+            if "feed" in self.driver.current_url or "mynetwork" in self.driver.current_url:
+                logger.info("✅ Successfully logged into LinkedIn")
+                return True
+            else:
+                logger.error("❌ Login failed")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Login error: {e}")
+            return False
+    
+    def analyze_job_with_ollama(self, job: JobListing) -> Dict[str, Any]:
+        """Use Ollama to analyze job compatibility"""
+        if not self.ollama.available:
+            return self._fallback_job_analysis(job)
+        
+        prompt = f"""
+        Analyze this job for compatibility with the candidate profile.
+        
+        Job: {job.title} at {job.company}
+        Location: {job.location}
+        Description: {job.description[:500]}
+        
+        Candidate Skills: {', '.join(self.profile.get('skills', []))}
+        Experience: {self.profile.get('experience_years', 0)} years
+        Preferences: Remote OK: {self.profile.get('remote_preference', True)}
+        
+        Respond with JSON only:
+        {{"compatibility_score": 0.85, "should_apply": true, "reasoning": "Strong skill match"}}
+        """
+        
+        response = self.ollama.query(prompt, max_tokens=256)
+        if response:
+            try:
+                return json.loads(response)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse Ollama job analysis")
+        
+        return self._fallback_job_analysis(job)
+    
+    def _fallback_job_analysis(self, job: JobListing) -> Dict[str, Any]:
+        """Fallback job analysis without AI"""
+        user_skills = set(skill.lower() for skill in self.profile.get('skills', []))
+        job_text = f"{job.title} {job.description}".lower()
+        
+        skill_matches = [skill for skill in user_skills if skill in job_text]
+        compatibility_score = min(len(skill_matches) / max(len(user_skills), 1), 1.0)
+        
+        return {
+            "compatibility_score": compatibility_score,
+            "should_apply": compatibility_score > 0.3,
+            "reasoning": f"Keyword analysis: {len(skill_matches)} skills matched"
+        }
+    
+    def generate_cover_letter_with_ollama(self, job: JobListing) -> str:
+        """Generate cover letter using Ollama"""
+        if not self.ollama.available:
+            return self._fallback_cover_letter(job)
+        
+        prompt = f"""
+        Write a professional cover letter for this job application.
+        
+        Job: {job.title} at {job.company}
+        Candidate: {self.profile['personal_info']['name']}
+        Skills: {', '.join(self.profile.get('skills', [])[:5])}
+        Experience: {self.profile.get('experience_years', 0)} years
+        
+        Requirements:
+        - Professional tone
+        - 3 paragraphs maximum
+        - Highlight relevant skills
+        - Show enthusiasm
+        
+        Write only the cover letter content.
+        """
+        
+        response = self.ollama.query(prompt, max_tokens=400)
+        if response:
+            return response.strip()
+        
+        return self._fallback_cover_letter(job)
+    
+    def _fallback_cover_letter(self, job: JobListing) -> str:
+        """Fallback cover letter without AI"""
+        return f"""Dear Hiring Manager,
+
+I am writing to express my interest in the {job.title} position at {job.company}. With {self.profile.get('experience_years', 0)} years of experience and expertise in {', '.join(self.profile.get('skills', [])[:3])}, I am confident I would be a valuable addition to your team.
+
+My background aligns well with your requirements, and I am particularly excited about the opportunity to contribute to {job.company}'s mission and grow my career in this role.
+
+I would welcome the opportunity to discuss how my experience can benefit your team. Thank you for considering my application.
+
+Best regards,
+{self.profile['personal_info']['name']}"""
+
+    def search_jobs(self) -> List[JobListing]:
+        """Search for jobs on LinkedIn"""
+        try:
+            logger.info(f"🔍 Searching for jobs: {self.keywords} in {self.location}")
+
+            # Navigate to jobs page
+            jobs_url = f"https://www.linkedin.com/jobs/search/?keywords={self.keywords}&location={self.location}&f_E={self._get_experience_filter()}&f_TPR=r86400"
+            self.driver.get(jobs_url)
+            time.sleep(3)
+
+            jobs = []
+            job_cards = self.driver.find_elements(By.CSS_SELECTOR, ".job-search-card")
+
+            for card in job_cards[:20]:  # Limit to first 20 jobs
+                try:
+                    title_elem = card.find_element(By.CSS_SELECTOR, ".base-search-card__title")
+                    company_elem = card.find_element(By.CSS_SELECTOR, ".base-search-card__subtitle")
+                    location_elem = card.find_element(By.CSS_SELECTOR, ".job-search-card__location")
+                    link_elem = card.find_element(By.CSS_SELECTOR, ".base-card__full-link")
+
+                    job = JobListing(
+                        title=title_elem.text.strip(),
+                        company=company_elem.text.strip(),
+                        location=location_elem.text.strip(),
+                        url=link_elem.get_attribute("href")
+                    )
+                    jobs.append(job)
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Error parsing job card: {e}")
+                    continue
+
+            logger.info(f"✅ Found {len(jobs)} jobs")
+            return jobs
+
+        except Exception as e:
+            logger.error(f"❌ Job search error: {e}")
+            return []
+
+    def _get_experience_filter(self) -> str:
+        """Get LinkedIn experience level filter"""
+        experience_map = {
+            "Internship": "1",
+            "Entry level": "2",
+            "Associate": "3",
+            "Mid-Senior level": "4",
+            "Director": "5",
+            "Executive": "6"
+        }
+        return experience_map.get(self.experience_level, "4")
+
+    def apply_to_job(self, job: JobListing) -> ApplicationResult:
+        """Apply to a single job with AI assistance"""
+        start_time = time.time()
+
+        try:
+            logger.info(f"📝 Applying to: {job.title} at {job.company}")
+
+            # Analyze job compatibility
+            analysis = self.analyze_job_with_ollama(job)
+
+            if not analysis['should_apply']:
+                return ApplicationResult(
+                    job=job,
+                    success=False,
+                    reason=f"Job not suitable: {analysis['reasoning']}",
+                    ai_confidence=analysis['compatibility_score'],
+                    time_taken=time.time() - start_time
+                )
+
+            # Navigate to job page
+            self.driver.get(job.url)
+            time.sleep(2)
+
+            # Get job description for better analysis
+            try:
+                description_elem = self.driver.find_element(By.CSS_SELECTOR, ".show-more-less-html__markup")
+                job.description = description_elem.text[:1000]  # Limit description length
+            except:
+                pass
+
+            # Find and click Easy Apply button
+            if not self._click_easy_apply():
+                return ApplicationResult(
+                    job=job,
+                    success=False,
+                    reason="Easy Apply button not found",
+                    ai_confidence=0.0,
+                    time_taken=time.time() - start_time
+                )
+
+            # Fill application form
+            if not self._fill_application_form(job):
+                return ApplicationResult(
+                    job=job,
+                    success=False,
+                    reason="Failed to fill application form",
+                    ai_confidence=analysis['compatibility_score'],
+                    time_taken=time.time() - start_time
+                )
+
+            # Submit application
+            if self._submit_application():
+                self.applications_sent += 1
+                logger.info(f"✅ Successfully applied to {job.title}")
+                return ApplicationResult(
+                    job=job,
+                    success=True,
+                    reason="Application submitted successfully",
+                    ai_confidence=analysis['compatibility_score'],
+                    time_taken=time.time() - start_time
+                )
+            else:
+                return ApplicationResult(
+                    job=job,
+                    success=False,
+                    reason="Failed to submit application",
+                    ai_confidence=analysis['compatibility_score'],
+                    time_taken=time.time() - start_time
+                )
+
+        except Exception as e:
+            logger.error(f"❌ Application error for {job.title}: {e}")
+            return ApplicationResult(
+                job=job,
+                success=False,
+                reason=f"Exception: {str(e)}",
+                ai_confidence=0.0,
+                time_taken=time.time() - start_time
+            )
+
+    def _click_easy_apply(self) -> bool:
+        """Find and click Easy Apply button using multiple strategies"""
+        try:
+            # Strategy 1: Standard Easy Apply button
+            easy_apply_selectors = [
+                "button[aria-label*='Easy Apply']",
+                "button:contains('Easy Apply')",
+                ".jobs-apply-button--top-card button",
+                ".jobs-s-apply button"
+            ]
+
+            for selector in easy_apply_selectors:
+                try:
+                    if "contains" in selector:
+                        # Use XPath for text-based selection
+                        xpath = f"//button[contains(text(), 'Easy Apply')]"
+                        button = self.driver.find_element(By.XPATH, xpath)
+                    else:
+                        button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                    if button.is_enabled():
+                        button.click()
+                        time.sleep(2)
+                        return True
+                except:
+                    continue
+
+            # Strategy 2: Computer vision approach
+            if self._find_easy_apply_with_cv():
+                return True
+
+            logger.warning("⚠️ Easy Apply button not found")
+            return False
+
+        except Exception as e:
+            logger.error(f"❌ Error clicking Easy Apply: {e}")
+            return False
+
+    def _find_easy_apply_with_cv(self) -> bool:
+        """Use computer vision to find Easy Apply button"""
+        try:
+            # Take screenshot
+            screenshot = self.driver.get_screenshot_as_png()
+            image = Image.open(io.BytesIO(screenshot))
+            cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+            # Template matching for "Easy Apply" text
+            # This is a simplified approach - in practice you'd need template images
+            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+            # Look for button-like rectangles
+            contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                if 80 < w < 200 and 30 < h < 60:  # Button-like dimensions
+                    # Click in the center of the potential button
+                    center_x = x + w // 2
+                    center_y = y + h // 2
+
+                    # Convert to Selenium click
+                    self.driver.execute_script(f"document.elementFromPoint({center_x}, {center_y}).click();")
+                    time.sleep(2)
+
+                    # Check if application modal opened
+                    if self._is_application_modal_open():
+                        return True
+
+            return False
+
+        except Exception as e:
+            logger.warning(f"⚠️ Computer vision approach failed: {e}")
+            return False
+
+    def _is_application_modal_open(self) -> bool:
+        """Check if application modal is open"""
+        try:
+            modal_selectors = [
+                ".jobs-easy-apply-modal",
+                "[data-test-modal]",
+                ".artdeco-modal"
+            ]
+
+            for selector in modal_selectors:
+                if self.driver.find_elements(By.CSS_SELECTOR, selector):
+                    return True
+            return False
+        except:
+            return False
+
+    def _fill_application_form(self, job: JobListing) -> bool:
+        """Fill application form with AI assistance"""
+        try:
+            # Wait for form to load
+            time.sleep(2)
+
+            # Handle multiple form pages
+            max_pages = 5
+            current_page = 0
+
+            while current_page < max_pages:
+                current_page += 1
+                logger.info(f"📝 Filling form page {current_page}")
+
+                # Fill current page
+                if not self._fill_current_form_page(job):
+                    logger.warning(f"⚠️ Failed to fill form page {current_page}")
+
+                # Check for next button
+                next_button = self._find_next_button()
+                if next_button:
+                    next_button.click()
+                    time.sleep(2)
+                else:
+                    # No next button, we're on the last page
+                    break
+
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Form filling error: {e}")
+            return False
+
+    def _fill_current_form_page(self, job: JobListing) -> bool:
+        """Fill current form page"""
+        try:
+            # Find all form fields
+            form_fields = self.driver.find_elements(By.CSS_SELECTOR, "input, select, textarea")
+
+            for field in form_fields:
+                try:
+                    field_type = field.get_attribute("type")
+                    field_name = field.get_attribute("name") or field.get_attribute("id") or ""
+                    field_label = self._get_field_label(field)
+
+                    if field_type in ["text", "email", "tel"] or field.tag_name == "textarea":
+                        value = self._get_field_value(field_name, field_label, field_type)
+                        if value:
+                            field.clear()
+                            field.send_keys(value)
+                            time.sleep(0.5)
+
+                    elif field.tag_name == "select":
+                        self._handle_select_field(field, field_name, field_label)
+
+                    elif field_type == "file":
+                        self._handle_file_upload(field, field_name, field_label)
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Error filling field: {e}")
+                    continue
+
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Error filling current page: {e}")
+            return False
+
+    def _get_field_label(self, field) -> str:
+        """Get field label text"""
+        try:
+            # Try to find associated label
+            field_id = field.get_attribute("id")
+            if field_id:
+                label = self.driver.find_element(By.CSS_SELECTOR, f"label[for='{field_id}']")
+                return label.text.strip()
+        except:
+            pass
+
+        try:
+            # Try parent element
+            parent = field.find_element(By.XPATH, "..")
+            label = parent.find_element(By.CSS_SELECTOR, "label")
+            return label.text.strip()
+        except:
+            pass
+
+        return ""
+
+    def _get_field_value(self, field_name: str, field_label: str, field_type: str) -> str:
+        """Get appropriate value for form field"""
+        field_text = f"{field_name} {field_label}".lower()
+
+        # Personal information
+        if any(term in field_text for term in ['first', 'fname', 'given']):
+            return self.profile['personal_info']['name'].split()[0]
+        elif any(term in field_text for term in ['last', 'lname', 'surname']):
+            return self.profile['personal_info']['name'].split()[-1]
+        elif any(term in field_text for term in ['email', 'mail']):
+            return self.profile['personal_info']['email']
+        elif any(term in field_text for term in ['phone', 'tel', 'mobile']):
+            return self.profile['personal_info'].get('phone', '')
+
+        # Professional information
+        elif any(term in field_text for term in ['experience', 'years']):
+            return str(self.profile.get('experience_years', 0))
+        elif any(term in field_text for term in ['salary', 'compensation']):
+            return str(self.profile.get('desired_salary', ''))
+        elif any(term in field_text for term in ['cover', 'letter', 'why']):
+            return self.generate_cover_letter_with_ollama(job) if hasattr(self, 'job') else ""
+
+        # Location
+        elif any(term in field_text for term in ['location', 'city', 'address']):
+            return self.profile['personal_info'].get('location', '')
+
+        return ""
+
+    def _handle_select_field(self, field, field_name: str, field_label: str):
+        """Handle select dropdown fields"""
+        try:
+            select = Select(field)
+            field_text = f"{field_name} {field_label}".lower()
+
+            # Get all options
+            options = [option.text.strip() for option in select.options if option.text.strip()]
+
+            # Experience level selection
+            if any(term in field_text for term in ['experience', 'level', 'years']):
+                target_years = self.profile.get('experience_years', 0)
+                if target_years < 1:
+                    select.select_by_visible_text("Less than 1 year")
+                elif target_years < 3:
+                    select.select_by_visible_text("1-2 years")
+                elif target_years < 5:
+                    select.select_by_visible_text("3-5 years")
+                else:
+                    select.select_by_visible_text("5+ years")
+
+            # Education level
+            elif any(term in field_text for term in ['education', 'degree']):
+                education = self.profile.get('education', '').lower()
+                if 'master' in education or 'mba' in education:
+                    select.select_by_visible_text("Master's degree")
+                elif 'bachelor' in education or 'bs' in education:
+                    select.select_by_visible_text("Bachelor's degree")
+                else:
+                    select.select_by_index(1)  # Select first non-empty option
+
+            # Default: select first non-empty option
+            else:
+                if len(options) > 1:
+                    select.select_by_index(1)
+
+        except Exception as e:
+            logger.warning(f"⚠️ Error handling select field: {e}")
+
+    def _handle_file_upload(self, field, field_name: str, field_label: str):
+        """Handle file upload fields"""
+        try:
+            field_text = f"{field_name} {field_label}".lower()
+
+            if any(term in field_text for term in ['resume', 'cv']):
+                resume_path = self.profile.get('resume_path')
+                if resume_path and os.path.exists(resume_path):
+                    field.send_keys(os.path.abspath(resume_path))
+                    time.sleep(1)
+            elif any(term in field_text for term in ['cover', 'letter']):
+                cover_letter_path = self.profile.get('cover_letter_path')
+                if cover_letter_path and os.path.exists(cover_letter_path):
+                    field.send_keys(os.path.abspath(cover_letter_path))
+                    time.sleep(1)
+
+        except Exception as e:
+            logger.warning(f"⚠️ Error handling file upload: {e}")
+
+    def _find_next_button(self):
+        """Find next button in application form"""
+        next_selectors = [
+            "button[aria-label*='Continue']",
+            "button[aria-label*='Next']",
+            "button:contains('Next')",
+            "button:contains('Continue')",
+            ".artdeco-button--primary"
+        ]
+
+        for selector in next_selectors:
+            try:
+                if "contains" in selector:
+                    xpath = selector.replace("button:contains('", "//button[contains(text(), '").replace("')", "')]")
+                    button = self.driver.find_element(By.XPATH, xpath)
+                else:
+                    button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                if button.is_enabled() and button.is_displayed():
+                    return button
+            except:
+                continue
+
+        return None
+
+    def _submit_application(self) -> bool:
+        """Submit the application"""
+        try:
+            submit_selectors = [
+                "button[aria-label*='Submit']",
+                "button:contains('Submit')",
+                "button:contains('Send application')",
+                ".jobs-apply-form__submit-button"
+            ]
+
+            for selector in submit_selectors:
+                try:
+                    if "contains" in selector:
+                        xpath = selector.replace("button:contains('", "//button[contains(text(), '").replace("')", "')]")
+                        button = self.driver.find_element(By.XPATH, xpath)
+                    else:
+                        button = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                    if button.is_enabled():
+                        button.click()
+                        time.sleep(3)
+                        return True
+                except:
+                    continue
+
+            logger.warning("⚠️ Submit button not found")
+            return False
+
+        except Exception as e:
+            logger.error(f"❌ Submit error: {e}")
+            return False
+
+    def _handle_manual_intervention(self, message: str):
+        """Handle manual intervention requests"""
+        try:
+            root = tk.Tk()
+            root.withdraw()  # Hide main window
+            messagebox.showinfo("Manual Intervention Required", message)
+            root.destroy()
+        except Exception as e:
+            logger.warning(f"⚠️ Manual intervention UI error: {e}")
+            input(f"{message} - Press Enter to continue...")
+
+    def run_automation(self):
+        """Main automation loop"""
+        try:
+            logger.info("🚀 Starting LinkedIn Ollama Automation")
+
+            # Setup browser
+            self.setup_browser()
+
+            # Login to LinkedIn
+            if not self.login_to_linkedin():
+                logger.error("❌ Failed to login to LinkedIn")
+                return
+
+            # Search for jobs
+            jobs = self.search_jobs()
+            if not jobs:
+                logger.error("❌ No jobs found")
+                return
+
+            logger.info(f"📋 Found {len(jobs)} jobs to process")
+
+            # Apply to jobs
+            for i, job in enumerate(jobs):
+                if self.applications_sent >= self.max_applications:
+                    logger.info(f"✅ Reached maximum applications limit ({self.max_applications})")
+                    break
+
+                logger.info(f"📝 Processing job {i+1}/{len(jobs)}: {job.title}")
+
+                # Apply to job
+                result = self.apply_to_job(job)
+                self.application_results.append(result)
+
+                if result.success:
+                    logger.info(f"✅ Application {self.applications_sent} successful")
+                else:
+                    logger.warning(f"⚠️ Application failed: {result.reason}")
+
+                # Random delay between applications
+                delay = random.uniform(30, 60)
+                logger.info(f"⏳ Waiting {delay:.1f} seconds before next application...")
+                time.sleep(delay)
+
+            # Generate summary report
+            self._generate_summary_report()
+
+        except KeyboardInterrupt:
+            logger.info("⏹️ Automation stopped by user")
+        except Exception as e:
+            logger.error(f"❌ Automation error: {e}")
+        finally:
+            self._cleanup()
+
+    def _generate_summary_report(self):
+        """Generate automation summary report"""
+        try:
+            successful_applications = [r for r in self.application_results if r.success]
+            failed_applications = [r for r in self.application_results if not r.success]
+
+            logger.info("📊 AUTOMATION SUMMARY")
+            logger.info("=" * 50)
+            logger.info(f"Total jobs processed: {len(self.application_results)}")
+            logger.info(f"Successful applications: {len(successful_applications)}")
+            logger.info(f"Failed applications: {len(failed_applications)}")
+            logger.info(f"Success rate: {len(successful_applications)/len(self.application_results)*100:.1f}%")
+
+            if self.ollama.available:
+                avg_confidence = sum(r.ai_confidence for r in successful_applications) / len(successful_applications) if successful_applications else 0
+                logger.info(f"Average AI confidence: {avg_confidence:.2f}")
+
+            # Save detailed report
+            report_data = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "summary": {
+                    "total_processed": len(self.application_results),
+                    "successful": len(successful_applications),
+                    "failed": len(failed_applications),
+                    "success_rate": len(successful_applications)/len(self.application_results)*100 if self.application_results else 0
+                },
+                "applications": [
+                    {
+                        "job_title": r.job.title,
+                        "company": r.job.company,
+                        "success": r.success,
+                        "reason": r.reason,
+                        "ai_confidence": r.ai_confidence,
+                        "time_taken": r.time_taken
+                    }
+                    for r in self.application_results
+                ]
+            }
+
+            report_filename = f"job_applications_{time.strftime('%Y%m%d_%H%M%S')}.json"
+            with open(report_filename, 'w') as f:
+                json.dump(report_data, f, indent=2)
+
+            logger.info(f"📄 Detailed report saved to: {report_filename}")
+
+        except Exception as e:
+            logger.error(f"❌ Error generating report: {e}")
+
+    def _cleanup(self):
+        """Cleanup resources"""
+        try:
+            if self.driver:
+                self.driver.quit()
+                logger.info("🧹 Browser cleanup complete")
+        except Exception as e:
+            logger.warning(f"⚠️ Cleanup error: {e}")
+
+
+def main():
+    """Main entry point"""
+    try:
+        # Initialize automation
+        automation = LinkedInOllamaAutomation(
+            profile_path="user_profile.json",
+            strategy=AutomationStrategy.ADAPTIVE
+        )
+
+        # Run automation
+        automation.run_automation()
+
+    except Exception as e:
+        logger.error(f"❌ Main error: {e}")
+
+
+if __name__ == "__main__":
+    main()
