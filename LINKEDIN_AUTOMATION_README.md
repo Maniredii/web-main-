@@ -82,6 +82,27 @@ Edit `user_profile.json` with your information:
 
 📖 **For detailed profile management documentation, see [PROFILE_MANAGER_README.md](PROFILE_MANAGER_README.md)**
 
+#### 🆕 Personal Information Templates
+**NEW**: Prepare your personal information offline and import it easily!
+
+**Quick Start with Templates:**
+```bash
+# Create template files
+python profile_manager.py --cli
+# Select option 7, then fill templates and import with option 6
+
+# Or use GUI
+python profile_manager.py
+# Personal Info tab → "Create Templates" → Fill → "Load from File"
+```
+
+**Supported Formats:**
+- 📄 **JSON**: `personal_info_template.json` - Structured data format
+- 📊 **CSV**: `personal_info_template.csv` - Spreadsheet-friendly format
+- 📝 **TXT**: `personal_info_template.txt` - Simple text format
+
+📖 **For template documentation, see [PERSONAL_INFO_TEMPLATES_README.md](PERSONAL_INFO_TEMPLATES_README.md)**
+
 ### 4. Set Environment Variables
 ```bash
 export LINKEDIN_PASSWORD="your_password"

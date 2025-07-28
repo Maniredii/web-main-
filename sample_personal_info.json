@@ -1,0 +1,10 @@
+{
+  "personal_information": {
+    "name": "Jane Smith",
+    "email": "jane.smith@email.com",
+    "phone": "+1-555-987-6543",
+    "location": "Seattle, WA, USA",
+    "linkedin_url": "https://linkedin.com/in/janesmith",
+    "website": "https://janesmith.dev"
+  }
+}

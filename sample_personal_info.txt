@@ -1,0 +1,17 @@
+# Sample Personal Information for Testing
+
+NAME: Jane Smith
+
+EMAIL: jane.smith@email.com
+
+PHONE: +1-555-987-6543
+
+LOCATION: Seattle, WA, USA
+
+LINKEDIN: https://linkedin.com/in/janesmith
+
+WEBSITE: https://janesmith.dev
+
+ADDITIONAL_URLS:
+https://janesmith.medium.com
+https://stackoverflow.com/users/123456/janesmith

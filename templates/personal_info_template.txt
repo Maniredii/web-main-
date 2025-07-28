@@ -1,0 +1,88 @@
+# Personal Information Template for LinkedIn Job Application Automation
+# ================================================================
+# 
+# INSTRUCTIONS:
+# 1. Fill in your personal information below each field label
+# 2. Replace the example text with your actual information
+# 3. Leave fields blank if you don't want to include them
+# 4. Save this file and import it using the Profile Manager
+# 5. Use GUI: Profile Manager → Personal Info tab → 'Load from File'
+# 6. Use CLI: Profile Manager CLI → Option 6 → Import Personal Info
+#
+# IMPORTANT: Keep this file secure as it contains personal information
+# ================================================================
+
+# FULL NAME (Required)
+# Your complete name as it appears on your resume
+# Example: John Michael Smith
+NAME:
+
+
+# EMAIL ADDRESS (Required) 
+# Your primary email address for job applications
+# Must be in valid email format (contains @ and domain)
+# Example: john.smith@email.com
+EMAIL:
+
+
+# PHONE NUMBER (Optional)
+# Your phone number with country code for international applications
+# Formats: +1-555-123-4567, (555) 123-4567, 555.123.4567
+# Example: +1-555-123-4567
+PHONE:
+
+
+# LOCATION (Optional but recommended)
+# Your current location - be specific enough for job matching
+# Formats: City, State, Country OR City, State OR Remote
+# Example: San Francisco, CA, USA
+LOCATION:
+
+
+# LINKEDIN URL (Optional but recommended)
+# Your LinkedIn profile URL
+# Will auto-correct if missing https://
+# Example: https://linkedin.com/in/johnsmith
+LINKEDIN:
+
+
+# PERSONAL WEBSITE (Optional)
+# Your personal website, portfolio, or professional blog
+# Should start with http:// or https://
+# Example: https://johnsmith.dev
+WEBSITE:
+
+
+# GITHUB PROFILE (Optional)
+# Your GitHub profile URL (useful for technical roles)
+# Example: https://github.com/johnsmith
+GITHUB:
+
+
+# ADDITIONAL PROFESSIONAL URLS (Optional)
+# Other professional URLs (one per line)
+# Examples:
+# https://johnsmith.medium.com
+# https://stackoverflow.com/users/123456/johnsmith
+# https://dribbble.com/johnsmith
+ADDITIONAL_URLS:
+
+
+
+
+# ================================================================
+# VALIDATION NOTES:
+# - Name and Email are required fields
+# - Email must contain @ and a valid domain
+# - Phone numbers should include country code (+1 for US)
+# - URLs will be validated and auto-corrected if needed
+# - Location helps with job matching and salary expectations
+# - All other fields are optional but recommended for better results
+# ================================================================
+
+# PRIVACY NOTE:
+# This file contains your personal information. 
+# - Do not share this file publicly
+# - Store it securely on your local machine
+# - Consider using the encryption feature in Profile Manager
+# ================================================================

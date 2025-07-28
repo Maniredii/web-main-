@@ -23,6 +23,14 @@ from cryptography.fernet import Fernet
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Personal info file parser
+try:
+    from personal_info_parser import PersonalInfoParser
+    PARSER_AVAILABLE = True
+except ImportError:
+    PARSER_AVAILABLE = False
+    logger.warning("Personal info parser not available")
+
 
 @dataclass
 class PersonalInfo:
@@ -132,7 +140,20 @@ class ProfileValidator:
             return False, "Phone number must have at least 10 digits"
         
         return True, ""
-    
+
+    @staticmethod
+    def validate_url(url: str) -> Tuple[bool, str]:
+        """Validate URL format"""
+        if not url:
+            return True, ""  # URLs are optional
+
+        # Basic URL validation
+        url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
+        if not re.match(url_pattern, url):
+            return False, "Invalid URL format (must start with http:// or https://)"
+
+        return True, ""
+
     @staticmethod
     def validate_file_path(file_path: str, file_type: str) -> Tuple[bool, str]:
         """Validate file path exists"""
@@ -561,6 +582,23 @@ class ProfileManagerGUI:
         self.salary_var = tk.StringVar()
         ttk.Entry(frame, textvariable=self.salary_var, width=40).grid(row=row, column=1, padx=5, pady=5)
         row += 1
+
+        # Import from file section
+        ttk.Separator(frame, orient='horizontal').grid(row=row, column=0, columnspan=2, sticky='ew', padx=5, pady=10)
+        row += 1
+
+        ttk.Label(frame, text="Import Personal Info:", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
+        row += 1
+
+        import_frame = ttk.Frame(frame)
+        import_frame.grid(row=row, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+
+        ttk.Button(import_frame, text="Load from File", command=self.import_personal_info).pack(side=tk.LEFT, padx=5)
+        ttk.Button(import_frame, text="Create Templates", command=self.create_personal_info_templates).pack(side=tk.LEFT, padx=5)
+
+        # Status label for import operations
+        self.import_status_label = ttk.Label(frame, text="", foreground="blue")
+        self.import_status_label.grid(row=row+1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=5)
 
         # Summary
         ttk.Label(frame, text="Professional Summary:").grid(row=row, column=0, sticky=tk.NW, padx=5, pady=5)
@@ -1062,6 +1100,109 @@ class ProfileManagerGUI:
             # Load the imported profile
             self.load_profile_file(dest_filename)
 
+    def import_personal_info(self):
+        """Import personal information from file"""
+        if not PARSER_AVAILABLE:
+            messagebox.showerror("Error", "Personal info parser not available. Please ensure personal_info_parser.py is in the same directory.")
+            return
+
+        # File dialog for selecting personal info file
+        filetypes = [
+            ("All supported", "*.json;*.csv;*.txt"),
+            ("JSON files", "*.json"),
+            ("CSV files", "*.csv"),
+            ("Text files", "*.txt"),
+            ("All files", "*.*")
+        ]
+
+        filename = filedialog.askopenfilename(
+            title="Select Personal Information File",
+            filetypes=filetypes
+        )
+
+        if not filename:
+            return
+
+        try:
+            # Parse the file
+            personal_info, errors = PersonalInfoParser.parse_file(filename)
+
+            if personal_info:
+                # Update the form fields
+                self.name_var.set(personal_info.name)
+                self.email_var.set(personal_info.email)
+                self.phone_var.set(personal_info.phone)
+                self.location_var.set(personal_info.location)
+                self.linkedin_var.set(personal_info.linkedin_url)
+                self.website_var.set(personal_info.website)
+
+                # Show success message
+                if errors:
+                    warning_msg = f"Personal information imported with {len(errors)} warnings:\n\n" + "\n".join(f"• {error}" for error in errors)
+                    messagebox.showwarning("Import Warnings", warning_msg)
+                    self.import_status_label.config(text=f"✅ Imported with {len(errors)} warnings", foreground="orange")
+                else:
+                    messagebox.showinfo("Success", "Personal information imported successfully!")
+                    self.import_status_label.config(text="✅ Personal info imported successfully", foreground="green")
+            else:
+                error_msg = "Failed to import personal information:\n\n" + "\n".join(f"• {error}" for error in errors)
+                messagebox.showerror("Import Error", error_msg)
+                self.import_status_label.config(text="❌ Import failed", foreground="red")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Unexpected error during import: {str(e)}")
+            self.import_status_label.config(text="❌ Import error", foreground="red")
+
+    def create_personal_info_templates(self):
+        """Create personal information template files"""
+        try:
+            # Ask user where to save templates
+            directory = filedialog.askdirectory(
+                title="Select Directory to Save Templates",
+                initialdir=os.getcwd()
+            )
+
+            if not directory:
+                return
+
+            if PARSER_AVAILABLE:
+                created_files = PersonalInfoParser.create_template_files(directory)
+                if created_files:
+                    files_list = "\n".join(f"• {os.path.basename(f)}" for f in created_files)
+                    messagebox.showinfo("Templates Created", f"Template files created:\n\n{files_list}\n\nLocation: {directory}")
+                    self.import_status_label.config(text="✅ Templates created", foreground="green")
+                else:
+                    messagebox.showwarning("Warning", "No template files were created")
+                    self.import_status_label.config(text="⚠️ Template creation failed", foreground="orange")
+            else:
+                # Fallback: copy template files manually
+                template_files = [
+                    'personal_info_template.json',
+                    'personal_info_template.csv',
+                    'personal_info_template.txt'
+                ]
+
+                created_files = []
+                for template_file in template_files:
+                    source_path = Path(template_file)
+                    dest_path = Path(directory) / template_file
+
+                    if source_path.exists():
+                        shutil.copy2(source_path, dest_path)
+                        created_files.append(str(dest_path))
+
+                if created_files:
+                    files_list = "\n".join(f"• {os.path.basename(f)}" for f in created_files)
+                    messagebox.showinfo("Templates Created", f"Template files created:\n\n{files_list}\n\nLocation: {directory}")
+                    self.import_status_label.config(text="✅ Templates created", foreground="green")
+                else:
+                    messagebox.showerror("Error", "Template files not found in current directory")
+                    self.import_status_label.config(text="❌ Templates not found", foreground="red")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error creating templates: {str(e)}")
+            self.import_status_label.config(text="❌ Template creation error", foreground="red")
+
     def run(self):
         """Run the GUI"""
         self.root.mainloop()
@@ -1081,7 +1222,7 @@ class ProfileManagerCLI:
 
         while True:
             self.show_menu()
-            choice = input("\nEnter your choice (1-8): ").strip()
+            choice = input("\nEnter your choice (1-10): ").strip()
 
             if choice == '1':
                 self.create_new_profile()
@@ -1094,10 +1235,14 @@ class ProfileManagerCLI:
             elif choice == '5':
                 self.load_template()
             elif choice == '6':
-                self.backup_profile()
+                self.import_personal_info_cli()
             elif choice == '7':
-                self.export_import_profile()
+                self.create_personal_info_templates_cli()
             elif choice == '8':
+                self.backup_profile()
+            elif choice == '9':
+                self.export_import_profile()
+            elif choice == '10':
                 print("👋 Goodbye!")
                 break
             else:
@@ -1113,9 +1258,11 @@ class ProfileManagerCLI:
         print("3. Validate Profile")
         print("4. List Saved Profiles")
         print("5. Load Template")
-        print("6. Backup Profile")
-        print("7. Export/Import Profile")
-        print("8. Exit")
+        print("6. Import Personal Info from File")
+        print("7. Create Personal Info Templates")
+        print("8. Backup Profile")
+        print("9. Export/Import Profile")
+        print("10. Exit")
 
     def create_new_profile(self):
         """Create new profile via CLI"""
@@ -1445,6 +1592,119 @@ class ProfileManagerCLI:
                 print("❌ File not found")
         else:
             print("❌ Invalid choice")
+
+    def import_personal_info_cli(self):
+        """Import personal information from file via CLI"""
+        if not PARSER_AVAILABLE:
+            print("❌ Personal info parser not available")
+            print("Please ensure personal_info_parser.py is in the same directory")
+            return
+
+        print("\n📄 Import Personal Information from File")
+        print("-" * 40)
+
+        # Get file path
+        file_path = input("Enter path to personal info file: ").strip()
+
+        if not file_path:
+            print("❌ No file path provided")
+            return
+
+        if not os.path.exists(file_path):
+            print(f"❌ File not found: {file_path}")
+            return
+
+        try:
+            # Parse the file
+            personal_info, errors = PersonalInfoParser.parse_file(file_path)
+
+            if personal_info:
+                print(f"\n✅ Personal information parsed successfully!")
+                print(f"📋 Parsed Information:")
+                print(f"  Name: {personal_info.name}")
+                print(f"  Email: {personal_info.email}")
+                print(f"  Phone: {personal_info.phone}")
+                print(f"  Location: {personal_info.location}")
+                print(f"  LinkedIn: {personal_info.linkedin_url}")
+                print(f"  Website: {personal_info.website}")
+
+                if errors:
+                    print(f"\n⚠️ Validation warnings ({len(errors)}):")
+                    for error in errors:
+                        print(f"  • {error}")
+
+                # Ask if user wants to apply to existing profile
+                apply = input("\nApply this information to your profile? (y/n): ").lower().startswith('y')
+
+                if apply:
+                    # Load existing profile or create new one
+                    profile = self.storage.load_profile() or UserProfile()
+
+                    # Update personal info
+                    profile.personal_info = personal_info
+
+                    # Save updated profile
+                    if self.storage.save_profile(profile):
+                        print("✅ Personal information applied to profile successfully!")
+                    else:
+                        print("❌ Failed to save updated profile")
+                else:
+                    print("ℹ️ Personal information not applied")
+            else:
+                print(f"\n❌ Failed to parse personal information:")
+                for error in errors:
+                    print(f"  • {error}")
+
+        except Exception as e:
+            print(f"❌ Error importing personal information: {str(e)}")
+
+    def create_personal_info_templates_cli(self):
+        """Create personal information template files via CLI"""
+        print("\n📄 Create Personal Information Templates")
+        print("-" * 40)
+
+        # Get output directory
+        output_dir = input("Enter directory to save templates (Enter for current directory): ").strip()
+        if not output_dir:
+            output_dir = "."
+
+        try:
+            if PARSER_AVAILABLE:
+                created_files = PersonalInfoParser.create_template_files(output_dir)
+            else:
+                # Fallback: copy template files manually
+                template_files = [
+                    'personal_info_template.json',
+                    'personal_info_template.csv',
+                    'personal_info_template.txt'
+                ]
+
+                created_files = []
+                for template_file in template_files:
+                    source_path = Path(template_file)
+                    dest_path = Path(output_dir) / template_file
+
+                    if source_path.exists():
+                        os.makedirs(output_dir, exist_ok=True)
+                        shutil.copy2(source_path, dest_path)
+                        created_files.append(str(dest_path))
+
+            if created_files:
+                print(f"\n✅ Template files created in: {os.path.abspath(output_dir)}")
+                for file_path in created_files:
+                    print(f"  • {os.path.basename(file_path)}")
+
+                print(f"\n📋 How to use:")
+                print(f"1. Choose a template file format (JSON, CSV, or TXT)")
+                print(f"2. Fill in your personal information")
+                print(f"3. Save the file")
+                print(f"4. Import using option 6 from the main menu")
+            else:
+                print("❌ No template files were created")
+                print("Template files may not be available in the current directory")
+
+        except Exception as e:
+            print(f"❌ Error creating templates: {str(e)}")
 
 
 def main():
