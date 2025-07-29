@@ -49,6 +49,16 @@ except ImportError:
     USER_DETAILS_AVAILABLE = False
     logger.warning("User details loader not available")
 
+# Import resume optimization system
+try:
+    from resume_optimizer import ResumeOptimizer, OptimizationResult
+    from job_description_parser import JobDescriptionParser
+    from resume_parser import ResumeParser
+    RESUME_OPTIMIZATION_AVAILABLE = True
+except ImportError:
+    RESUME_OPTIMIZATION_AVAILABLE = False
+    logger.warning("Resume optimization system not available")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -81,6 +91,9 @@ class ApplicationResult:
     reason: str
     ai_confidence: float = 0.0
     time_taken: float = 0.0
+    resume_optimized: bool = False
+    optimization_score: float = 0.0
+    optimized_resume_path: str = ""
 
 
 class OllamaManager:
@@ -205,6 +218,37 @@ class LinkedInOllamaAutomation:
         # Browser setup
         self.driver = None
         self.wait = None
+
+        # Resume optimization setup
+        self.resume_optimizer = None
+        self.original_resume_path = None
+        self.enable_resume_optimization = True
+
+        if RESUME_OPTIMIZATION_AVAILABLE and self.enable_resume_optimization:
+            try:
+                self.resume_optimizer = ResumeOptimizer(self.ollama)
+                # Get resume path from profile
+                self.original_resume_path = self.profile.get('resume_path')
+                if not self.original_resume_path or not os.path.exists(self.original_resume_path):
+                    # Try to find sample resume in current directory
+                    possible_resumes = ['sample resume.docx', 'resume.docx', 'resume.pdf', 'cv.docx', 'cv.pdf']
+                    for resume_file in possible_resumes:
+                        if os.path.exists(resume_file):
+                            self.original_resume_path = resume_file
+                            logger.info(f"📄 Found resume file: {resume_file}")
+                            break
+
+                if self.original_resume_path:
+                    logger.info(f"✅ Resume optimization enabled with: {self.original_resume_path}")
+                else:
+                    logger.warning("⚠️ No resume file found - resume optimization disabled")
+                    self.enable_resume_optimization = False
+
+            except Exception as e:
+                logger.warning(f"⚠️ Resume optimization setup failed: {e}")
+                self.enable_resume_optimization = False
+        else:
+            logger.info("📄 Resume optimization not available or disabled")
     
     def _convert_user_details_to_profile(self) -> Dict[str, Any]:
         """Convert user details to profile format"""
@@ -485,6 +529,39 @@ Best regards,
             except:
                 pass
 
+            # Optimize resume for this specific job
+            optimized_resume_path = None
+            optimization_score = 0.0
+            resume_optimized = False
+
+            if self.enable_resume_optimization and self.original_resume_path and job.description:
+                try:
+                    logger.info("🔧 Optimizing resume for job requirements...")
+                    optimization_result = self.resume_optimizer.optimize_resume_for_job(
+                        self.original_resume_path,
+                        job.description,
+                        job.title,
+                        job.company
+                    )
+
+                    if optimization_result:
+                        optimized_resume_path = optimization_result.output_file_path
+                        optimization_score = optimization_result.optimization_score
+                        resume_optimized = True
+
+                        # Update profile to use optimized resume for this application
+                        if os.path.exists(optimized_resume_path):
+                            self.profile['resume_path'] = optimized_resume_path
+                            logger.info(f"✅ Resume optimized with score: {optimization_score:.2f}")
+                        else:
+                            logger.warning("⚠️ Optimized resume file not found, using original")
+                    else:
+                        logger.warning("⚠️ Resume optimization failed, using original resume")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Resume optimization error: {e}")
+                    # Continue with original resume
+
             # Find and click Easy Apply button
             if not self._click_easy_apply():
                 return ApplicationResult(
@@ -492,7 +569,10 @@ Best regards,
                     success=False,
                     reason="Easy Apply button not found",
                     ai_confidence=0.0,
-                    time_taken=time.time() - start_time
+                    time_taken=time.time() - start_time,
+                    resume_optimized=resume_optimized,
+                    optimization_score=optimization_score,
+                    optimized_resume_path=optimized_resume_path or ""
                 )
 
             # Fill application form
@@ -502,19 +582,27 @@ Best regards,
                     success=False,
                     reason="Failed to fill application form",
                     ai_confidence=analysis['compatibility_score'],
-                    time_taken=time.time() - start_time
+                    time_taken=time.time() - start_time,
+                    resume_optimized=resume_optimized,
+                    optimization_score=optimization_score,
+                    optimized_resume_path=optimized_resume_path or ""
                 )
 
             # Submit application
             if self._submit_application():
                 self.applications_sent += 1
                 logger.info(f"✅ Successfully applied to {job.title}")
+                if resume_optimized:
+                    logger.info(f"📄 Used optimized resume with score: {optimization_score:.2f}")
                 return ApplicationResult(
                     job=job,
                     success=True,
                     reason="Application submitted successfully",
                     ai_confidence=analysis['compatibility_score'],
-                    time_taken=time.time() - start_time
+                    time_taken=time.time() - start_time,
+                    resume_optimized=resume_optimized,
+                    optimization_score=optimization_score,
+                    optimized_resume_path=optimized_resume_path or ""
                 )
             else:
                 return ApplicationResult(
@@ -522,7 +610,10 @@ Best regards,
                     success=False,
                     reason="Failed to submit application",
                     ai_confidence=analysis['compatibility_score'],
-                    time_taken=time.time() - start_time
+                    time_taken=time.time() - start_time,
+                    resume_optimized=resume_optimized,
+                    optimization_score=optimization_score,
+                    optimized_resume_path=optimized_resume_path or ""
                 )
 
         except Exception as e:
@@ -532,7 +623,10 @@ Best regards,
                 success=False,
                 reason=f"Exception: {str(e)}",
                 ai_confidence=0.0,
-                time_taken=time.time() - start_time
+                time_taken=time.time() - start_time,
+                resume_optimized=False,
+                optimization_score=0.0,
+                optimized_resume_path=""
             )
 
     def _click_easy_apply(self) -> bool:
@@ -823,15 +917,19 @@ Best regards,
             logger.warning(f"⚠️ Error handling select field: {e}")
 
     def _handle_file_upload(self, field, field_name: str, field_label: str):
-        """Handle file upload fields"""
+        """Handle file upload fields with optimized resume support"""
         try:
             field_text = f"{field_name} {field_label}".lower()
 
             if any(term in field_text for term in ['resume', 'cv']):
+                # Use optimized resume if available, otherwise use original
                 resume_path = self.profile.get('resume_path')
                 if resume_path and os.path.exists(resume_path):
                     field.send_keys(os.path.abspath(resume_path))
+                    logger.info(f"📄 Uploaded resume: {os.path.basename(resume_path)}")
                     time.sleep(1)
+                else:
+                    logger.warning("⚠️ No resume file found for upload")
             elif any(term in field_text for term in ['cover', 'letter']):
                 cover_letter_path = self.profile.get('cover_letter_path')
                 if cover_letter_path and os.path.exists(cover_letter_path):
@@ -963,10 +1061,11 @@ Best regards,
             self._cleanup()
 
     def _generate_summary_report(self):
-        """Generate automation summary report"""
+        """Generate automation summary report with resume optimization stats"""
         try:
             successful_applications = [r for r in self.application_results if r.success]
             failed_applications = [r for r in self.application_results if not r.success]
+            optimized_applications = [r for r in self.application_results if r.resume_optimized]
 
             logger.info("📊 AUTOMATION SUMMARY")
             logger.info("=" * 50)
@@ -974,6 +1073,13 @@ Best regards,
             logger.info(f"Successful applications: {len(successful_applications)}")
             logger.info(f"Failed applications: {len(failed_applications)}")
             logger.info(f"Success rate: {len(successful_applications)/len(self.application_results)*100:.1f}%")
+
+            # Resume optimization stats
+            if self.enable_resume_optimization:
+                logger.info(f"Resumes optimized: {len(optimized_applications)}")
+                if optimized_applications:
+                    avg_optimization_score = sum(r.optimization_score for r in optimized_applications) / len(optimized_applications)
+                    logger.info(f"Average optimization score: {avg_optimization_score:.2f}")
 
             if self.ollama.available:
                 avg_confidence = sum(r.ai_confidence for r in successful_applications) / len(successful_applications) if successful_applications else 0
@@ -995,7 +1101,10 @@ Best regards,
                         "success": r.success,
                         "reason": r.reason,
                         "ai_confidence": r.ai_confidence,
-                        "time_taken": r.time_taken
+                        "time_taken": r.time_taken,
+                        "resume_optimized": r.resume_optimized,
+                        "optimization_score": r.optimization_score,
+                        "optimized_resume_path": r.optimized_resume_path
                     }
                     for r in self.application_results
                 ]
