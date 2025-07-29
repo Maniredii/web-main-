@@ -1,0 +1,84 @@
+{
+  "ollama": {
+    "endpoint": "http://localhost:11434",
+    "model": "qwen2.5:7b",
+    "temperature": 0.1,
+    "max_tokens": 512,
+    "timeout": 30
+  },
+  "automation": {
+    "strategy": "adaptive",
+    "max_applications_per_run": 10,
+    "delay_between_applications": [30, 60],
+    "delay_between_pages": [3, 5],
+    "enable_ai_analysis": true,
+    "enable_computer_vision": true,
+    "max_pages": 10
+  },
+  "linkedin": {
+    "credentials": {
+      "email": "your email",
+      "password": "password"
+    },
+    "search_criteria": {
+      "keywords": "Python Developer",
+      "location": "Remote",
+      "experience_levels": ["Entry level", "Associate", "Mid-Senior level"],
+      "job_types": ["Full-time", "Contract", "Part-time"],
+      "remote_options": ["Remote", "Hybrid", "On-site"],
+      "excluded_companies": ["Company1", "Company2"],
+      "excluded_keywords": ["Senior", "Lead", "Manager", "Director"]
+    },
+    "search_filters": {
+      "date_posted": "r86400",
+      "easy_apply_only": true,
+      "remote_jobs": true
+    },
+    "application_settings": {
+      "auto_submit": false,
+      "require_manual_review": true,
+      "skip_cover_letter_required": false,
+      "skip_complex_applications": true,
+      "auto_submit_simple_applications": true,
+      "max_applications": 25
+    }
+  },
+  "job_criteria": {
+    "required_keywords": ["Python", "Software Engineer"],
+    "preferred_keywords": ["Django", "React", "AWS", "Docker"],
+    "excluded_keywords": ["Senior", "Lead", "Manager"],
+    "locations": ["Remote", "San Francisco", "New York"],
+    "salary_min": 80000,
+    "experience_years": 3,
+    "job_types": ["Full-time"],
+    "company_size": ["Startup", "Mid-size", "Large"]
+  },
+  "job_sites": {
+    "linkedin": {
+      "enabled": true,
+      "priority": 1
+    },
+    "indeed": {
+      "enabled": true,
+      "priority": 2
+    },
+    "glassdoor": {
+      "enabled": true,
+      "priority": 3
+    },
+    "angel": {
+      "enabled": false,
+      "priority": 4
+    }
+  },
+  "personal_info": {
+    "name": "Alex Johnson",
+    "email": "alex.johnson.dev@gmail.com",
+    "phone": "(555) 123-4567",
+    "linkedin": "https://linkedin.com/in/alexjohnsondev",
+    "github": "https://github.com/alexjohnsondev",
+    "portfolio": "https://alexjohnson.dev",
+    "resume_path": "resume.pdf",
+    "cover_letter_template": "I am excited to apply for the {position} role at {company}. With my background in software development and passion for technology, I believe I would be a great fit for your team."
+  }
+}

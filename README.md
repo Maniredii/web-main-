@@ -1,47 +1,61 @@
-# 🤖 Ultimate Job Applier
+# 🚀 LinkedIn Job Application Automation
 
-**100% Free | No API Keys Required | Powered by Ollama**
+**AI-Powered LinkedIn Job Application Automation with Ollama Integration**
 
-Automatically apply to jobs on LinkedIn, Indeed, and other job sites using local AI. No monthly fees, no rate limits, complete privacy.
+Automate your LinkedIn job applications with intelligent AI assistance, comprehensive profile management, and smart job matching.
 
-## ✨ Features
+## ⚡ Quick Start (2 Steps)
 
-- 🆓 **Completely Free** - Uses local Ollama models
-- 🔒 **Private** - Everything runs on your computer
-- ⚡ **Fast** - No API delays or rate limits
-- 🎯 **Smart** - AI-powered job matching and application
-- 🌐 **Multi-Site** - LinkedIn, Indeed, Glassdoor support
-- 📊 **Tracking** - Detailed application reports
+**New users start here:**
 
-## 🚀 Quick Start
-
-### 1. Install Ollama
-Download from [ollama.com](https://ollama.com) and install the recommended model:
 ```bash
-ollama pull qwen2.5:7b
-```
+# 1. Set up your details (one-time setup)
+python setup_my_details.py
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-playwright install chromium
-```
-
-### 3. Configure Your Info
-Edit `user_profile.json` with your personal information and set your LinkedIn password:
-```bash
-export LINKEDIN_PASSWORD="your_password"
-```
-
-### 4. Start Applying!
-```bash
+# 2. Run the automation
 python linkedin_ollama_automation.py
 ```
 
-## 📚 Documentation
-- See `LINKEDIN_AUTOMATION_README.md` for detailed setup and usage
-- Configure automation settings in `automation_config.json`
-- Monitor applications with detailed JSON reports
+**That's it!** The automation will automatically use your details for job applications.
+
+## 🎯 Key Features
+
+### 🤖 **AI-Powered Automation**
+- **Ollama Integration**: Local AI for intelligent form filling
+- **Smart Job Matching**: AI analyzes job compatibility
+- **Adaptive Strategy**: Learns from application success rates
+- **Computer Vision**: Handles complex form elements
+
+### 📋 **Profile Management**
+- **Simple Setup**: Easy configuration with `my_details.json` or `my_details.txt`
+- **Advanced Profiles**: Full profile manager with GUI/CLI interfaces
+- **Template System**: Pre-built templates for different roles
+- **Secure Storage**: Optional encryption for sensitive data
+
+### 🎯 **Smart Job Search**
+- **Intelligent Filtering**: Filters jobs based on your criteria
+- **Application Tracking**: Comprehensive logging and reporting
+- **Multi-Site Support**: LinkedIn, Indeed, Glassdoor (planned)
+- **Rate Limiting**: Respects platform limits and human-like behavior
+
+## 📦 Installation
+
+### Prerequisites
+- **Python 3.8+**
+- **Chrome Browser**
+- **Ollama** (for AI features)
+
+### Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Install Ollama
+```bash
+# Download and install Ollama from https://ollama.ai
+# Then pull the recommended model:
+ollama pull qwen2.5:7b
+```
 
 ## 💡 Why This is Better
 
