@@ -1,22 +1,19 @@
-# LinkedIn Job Applier Requirements
+# LinkedIn Job Application Automation Requirements
 
 # Core automation
 selenium>=4.15.0
 webdriver-manager>=4.0.0
 
-# Computer Vision for Easy Apply button detection
+# Computer Vision for form detection
 opencv-python>=4.8.0
 numpy>=1.24.0
 Pillow>=10.0.0
 
 # Configuration and environment
 python-dotenv>=1.0.0
-
-# AI Enhancement (optional)
-groq>=0.4.0
 requests>=2.31.0
 
-# Ollama Integration
+# Ollama Integration for AI features
 langchain>=0.1.0
 langchain-community>=0.0.20
 langchain-ollama>=0.1.0
@@ -25,20 +22,28 @@ langchain-ollama>=0.1.0
 browser-use>=1.0.0
 playwright>=1.40.0
 
-# Data handling
+# Data handling and reporting
 pandas>=2.0.0
 openpyxl>=3.1.0
 
-# Additional utilities
+# HTML parsing
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
-# Profile Management System
+# Profile Management System (optional encryption)
 cryptography>=3.4.8
 
-# GUI for manual interventions (usually included with Python)
-# tkinter
+# Document parsing for resume optimization
+python-docx>=0.8.11
+PyPDF2>=3.0.1
+pdfplumber>=0.9.0
 
-# Optional: For web interface
-# fastapi>=0.100.0
-# uvicorn>=0.20.0
+# Text processing and NLP
+nltk>=3.8
+spacy>=3.6.0
+textstat>=0.7.3
+
+# Resume optimization and ATS analysis
+python-dateutil>=2.8.2
+
+# Note: tkinter is included with Python standard library
