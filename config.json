@@ -9,8 +9,8 @@
   "automation": {
     "strategy": "adaptive",
     "max_applications_per_run": 10,
-    "delay_between_applications": [30, 60],
-    "delay_between_pages": [3, 5],
+    "delay_between_applications": 30,
+    "delay_between_pages": 3,
     "enable_ai_analysis": true,
     "enable_computer_vision": true,
     "max_pages": 10
