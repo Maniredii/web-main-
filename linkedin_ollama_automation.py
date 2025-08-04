@@ -308,61 +308,413 @@ class LinkedInOllamaAutomation:
             raise
     
     def setup_browser(self):
-        """Setup Chrome browser with stealth options"""
+        """Setup Chrome browser with advanced stealth options"""
         chrome_options = Options()
+        
+        # Basic stealth options
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        
+        # Advanced anti-detection measures
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-plugins")
+        chrome_options.add_argument("--disable-images")  # Faster loading, less bot-like
+        chrome_options.add_argument("--disable-javascript")  # Will be re-enabled after setup
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-features=TranslateUI")
+        chrome_options.add_argument("--disable-ipc-flooding-protection")
+        
+        # Random user agent rotation
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ]
+        chrome_options.add_argument(f"--user-agent={random.choice(user_agents)}")
+        
+        # Window size randomization
+        window_sizes = [(1920, 1080), (1366, 768), (1440, 900), (1536, 864), (1280, 720)]
+        window_size = random.choice(window_sizes)
+        chrome_options.add_argument(f"--window-size={window_size[0]},{window_size[1]}")
+        
+        # Additional preferences
+        prefs = {
+            "profile.default_content_setting_values": {
+                "notifications": 2,
+                "geolocation": 2,
+                "media_stream": 2
+            },
+            "profile.managed_default_content_settings": {
+                "images": 2
+            },
+            "profile.default_content_settings": {
+                "popups": 0
+            }
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
         
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        # Execute stealth scripts
+        self._apply_stealth_scripts()
+        
+        # Set random viewport
+        self.driver.set_window_size(window_size[0], window_size[1])
+        
+        # Add random mouse movements and scrolling behavior
+        self._simulate_human_behavior()
+        
         self.wait = WebDriverWait(self.driver, 10)
         
-        logger.info("✅ Browser setup complete")
+        logger.info("✅ Advanced stealth browser setup complete")
+    
+    def _apply_stealth_scripts(self):
+        """Apply additional stealth scripts to avoid detection"""
+        stealth_scripts = [
+            # Override permissions
+            "Object.defineProperty(navigator, 'permissions', {get: () => ({query: () => Promise.resolve({state: 'granted'})})})",
+            
+            # Override plugins
+            "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})",
+            
+            # Override languages
+            "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})",
+            
+            # Override platform
+            "Object.defineProperty(navigator, 'platform', {get: () => 'Win32'})",
+            
+            # Override hardware concurrency
+            "Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8})",
+            
+            # Override device memory
+            "Object.defineProperty(navigator, 'deviceMemory', {get: () => 8})",
+            
+            # Override connection
+            "Object.defineProperty(navigator, 'connection', {get: () => ({effectiveType: '4g', rtt: 50, downlink: 10})})",
+            
+            # Override chrome runtime
+            "Object.defineProperty(window, 'chrome', {get: () => ({runtime: {}}), configurable: true})",
+            
+            # Override automation properties
+            "delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array",
+            "delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise",
+            "delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol",
+            
+            # Override automation functions
+            "window.navigator.chrome = {runtime: {}}"
+        ]
+        
+        for script in stealth_scripts:
+            try:
+                self.driver.execute_script(script)
+            except Exception as e:
+                logger.debug(f"Stealth script failed: {e}")
+        
+        # Handle webdriver property separately to avoid conflicts
+        try:
+            # Try to remove webdriver property if it exists
+            self.driver.execute_script("delete navigator.webdriver")
+        except:
+            pass
+        
+        try:
+            # Set webdriver to undefined if possible
+            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined, configurable: true})")
+        except:
+            pass
+    
+    def _simulate_human_behavior(self):
+        """Simulate human-like behavior patterns"""
+        try:
+            # Random mouse movements
+            for _ in range(random.randint(3, 8)):
+                x = random.randint(100, 800)
+                y = random.randint(100, 600)
+                self.driver.execute_script(f"document.elementFromPoint({x}, {y})")
+                time.sleep(random.uniform(0.1, 0.5))
+            
+            # Random scrolling
+            scroll_amount = random.randint(100, 500)
+            self.driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
+            time.sleep(random.uniform(0.5, 1.5))
+            
+            # Random scroll back
+            self.driver.execute_script(f"window.scrollBy(0, -{scroll_amount//2})")
+            time.sleep(random.uniform(0.3, 0.8))
+            
+        except Exception as e:
+            logger.debug(f"Human behavior simulation failed: {e}")
+    
+    def _add_random_delays(self, min_delay=1, max_delay=3):
+        """Add random delays to simulate human behavior"""
+        delay = random.uniform(min_delay, max_delay)
+        time.sleep(delay)
+    
+    def _human_like_typing(self, element, text):
+        """Simulate human-like typing with random delays"""
+        element.clear()
+        for char in text:
+            element.send_keys(char)
+            time.sleep(random.uniform(0.05, 0.15))  # Random typing speed
     
     def login_to_linkedin(self) -> bool:
-        """Login to LinkedIn with error handling"""
+        """Login to LinkedIn with advanced anti-detection measures"""
         try:
-            logger.info("🔐 Logging into LinkedIn...")
+            logger.info("🔐 Logging into LinkedIn with stealth mode...")
+            
+            # Add random delay before accessing LinkedIn
+            self._add_random_delays(2, 5)
+            
+            # Navigate to LinkedIn with random delays
+            self.driver.get("https://www.linkedin.com")
+            self._add_random_delays(3, 6)
+            
+            # Navigate to login page
             self.driver.get("https://www.linkedin.com/login")
+            self._add_random_delays(2, 4)
             
-            # Wait for login form
-            email_field = self.wait.until(EC.presence_of_element_located((By.ID, "username")))
-            password_field = self.driver.find_element(By.ID, "password")
+            # Simulate human behavior before login
+            self._simulate_human_behavior()
             
-            # Enter credentials
-            email_field.send_keys(self.email)
-            time.sleep(random.uniform(1, 2))
-            password_field.send_keys(self.password)
-            time.sleep(random.uniform(1, 2))
+            # Wait for login form with multiple selectors
+            email_field = None
+            password_field = None
             
-            # Submit login
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            # Try multiple selectors for email field
+            email_selectors = [
+                (By.ID, "username"),
+                (By.NAME, "session_key"),
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.XPATH, "//input[@type='email']")
+            ]
+            
+            for selector in email_selectors:
+                try:
+                    email_field = self.wait.until(EC.presence_of_element_located(selector))
+                    break
+                except:
+                    continue
+            
+            if not email_field:
+                logger.error("❌ Could not find email field")
+                return False
+            
+            # Try multiple selectors for password field
+            password_selectors = [
+                (By.ID, "password"),
+                (By.NAME, "session_password"),
+                (By.CSS_SELECTOR, "input[type='password']"),
+                (By.XPATH, "//input[@type='password']")
+            ]
+            
+            for selector in password_selectors:
+                try:
+                    password_field = self.driver.find_element(*selector)
+                    break
+                except:
+                    continue
+            
+            if not password_field:
+                logger.error("❌ Could not find password field")
+                return False
+            
+            # Human-like typing for email
+            logger.info("📧 Entering email...")
+            self._human_like_typing(email_field, self.email)
+            self._add_random_delays(1, 3)
+            
+            # Human-like typing for password
+            logger.info("🔑 Entering password...")
+            self._human_like_typing(password_field, self.password)
+            self._add_random_delays(1, 3)
+            
+            # Find and click login button with multiple selectors
+            login_button = None
+            login_selectors = [
+                (By.XPATH, "//button[@type='submit']"),
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.XPATH, "//button[contains(text(), 'Sign in')]"),
+                (By.XPATH, "//button[contains(text(), 'Sign In')]"),
+                (By.CSS_SELECTOR, ".btn__primary--large")
+            ]
+            
+            for selector in login_selectors:
+                try:
+                    login_button = self.driver.find_element(*selector)
+                    break
+                except:
+                    continue
+            
+            if not login_button:
+                logger.error("❌ Could not find login button")
+                return False
+            
+            # Simulate human behavior before clicking
+            self._simulate_human_behavior()
+            
+            # Click login button
+            logger.info("🖱️ Clicking login button...")
             login_button.click()
             
-            # Wait for successful login
-            time.sleep(5)
+            # Wait for login with progressive delays
+            self._add_random_delays(3, 6)
             
-            # Check for security challenges
-            if "challenge" in self.driver.current_url or "checkpoint" in self.driver.current_url:
+            # Check for various security challenges
+            security_indicators = [
+                "challenge",
+                "checkpoint", 
+                "security",
+                "verification",
+                "captcha",
+                "phone",
+                "email-verification"
+            ]
+            
+            current_url = self.driver.current_url.lower()
+            if any(indicator in current_url for indicator in security_indicators):
                 logger.warning("⚠️ Security challenge detected - manual intervention required")
                 self._handle_manual_intervention("Please complete the security challenge and press OK")
+                self._add_random_delays(5, 10)
             
-            # Verify login success
-            if "feed" in self.driver.current_url or "mynetwork" in self.driver.current_url:
+            # Check for 2FA if present
+            try:
+                two_fa_elements = self.driver.find_elements(By.XPATH, "//input[@type='text' and contains(@placeholder, 'code') or contains(@placeholder, 'Code')]")
+                if two_fa_elements:
+                    logger.warning("⚠️ 2FA detected - manual intervention required")
+                    self._handle_manual_intervention("Please enter your 2FA code and press OK")
+                    self._add_random_delays(3, 6)
+            except:
+                pass
+            
+            # Verify login success with multiple indicators
+            success_indicators = [
+                "feed" in self.driver.current_url,
+                "mynetwork" in self.driver.current_url,
+                "messaging" in self.driver.current_url,
+                "jobs" in self.driver.current_url
+            ]
+            
+            # Also check for profile elements
+            try:
+                profile_elements = self.driver.find_elements(By.CSS_SELECTOR, "[data-control-name='identity_welcome_message']")
+                if profile_elements:
+                    success_indicators.append(True)
+            except:
+                pass
+            
+            if any(success_indicators):
                 logger.info("✅ Successfully logged into LinkedIn")
+                # Simulate normal user behavior after login
+                self._simulate_post_login_behavior()
                 return True
             else:
-                logger.error("❌ Login failed")
+                logger.error("❌ Login failed - could not verify successful login")
                 return False
                 
         except Exception as e:
             logger.error(f"❌ Login error: {e}")
             return False
+    
+    def _simulate_post_login_behavior(self):
+        """Simulate normal user behavior after login"""
+        try:
+            # Random scrolling
+            for _ in range(random.randint(2, 5)):
+                scroll_amount = random.randint(200, 800)
+                self.driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
+                self._add_random_delays(1, 3)
+            
+            # Random mouse movements
+            for _ in range(random.randint(3, 7)):
+                x = random.randint(100, 900)
+                y = random.randint(100, 700)
+                self.driver.execute_script(f"document.elementFromPoint({x}, {y})")
+                self._add_random_delays(0.5, 1.5)
+            
+            # Sometimes click on profile or other elements
+            if random.random() < 0.3:
+                try:
+                    profile_link = self.driver.find_element(By.CSS_SELECTOR, "[data-control-name='identity_welcome_message']")
+                    profile_link.click()
+                    self._add_random_delays(2, 4)
+                    self.driver.back()
+                    self._add_random_delays(1, 3)
+                except:
+                    pass
+                    
+        except Exception as e:
+            logger.debug(f"Post-login behavior simulation failed: {e}")
+    
+    def _simulate_job_reading_behavior(self):
+        """Simulate human-like job reading behavior"""
+        try:
+            # Scroll through job description
+            for _ in range(random.randint(3, 8)):
+                scroll_amount = random.randint(100, 400)
+                self.driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
+                self._add_random_delays(1, 3)
+            
+            # Sometimes scroll back up
+            if random.random() < 0.4:
+                self.driver.execute_script("window.scrollTo(0, 0)")
+                self._add_random_delays(1, 2)
+            
+            # Random mouse movements over job content
+            for _ in range(random.randint(2, 5)):
+                x = random.randint(200, 800)
+                y = random.randint(200, 600)
+                self.driver.execute_script(f"document.elementFromPoint({x}, {y})")
+                self._add_random_delays(0.5, 1.5)
+            
+            # Sometimes highlight text (simulate selection)
+            if random.random() < 0.3:
+                try:
+                    job_elements = self.driver.find_elements(By.CSS_SELECTOR, ".job-description, .description__text")
+                    if job_elements:
+                        element = random.choice(job_elements)
+                        self.driver.execute_script("arguments[0].style.backgroundColor = 'yellow'", element)
+                        self._add_random_delays(1, 2)
+                        self.driver.execute_script("arguments[0].style.backgroundColor = ''", element)
+                except:
+                    pass
+                    
+        except Exception as e:
+            logger.debug(f"Job reading behavior simulation failed: {e}")
+    
+    def _simulate_post_application_behavior(self):
+        """Simulate behavior after submitting application"""
+        try:
+            # Wait a bit after submission
+            self._add_random_delays(2, 4)
+            
+            # Sometimes go back to job search
+            if random.random() < 0.6:
+                self.driver.back()
+                self._add_random_delays(1, 3)
+            
+            # Sometimes refresh the page
+            if random.random() < 0.2:
+                self.driver.refresh()
+                self._add_random_delays(2, 4)
+            
+            # Random scrolling
+            for _ in range(random.randint(1, 3)):
+                scroll_amount = random.randint(100, 300)
+                self.driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
+                self._add_random_delays(0.5, 1.5)
+                
+        except Exception as e:
+            logger.debug(f"Post-application behavior simulation failed: {e}")
     
     def analyze_job_with_ollama(self, job: JobListing) -> Dict[str, Any]:
         """Use Ollama to analyze job compatibility"""
@@ -500,11 +852,14 @@ Best regards,
         return experience_map.get(self.experience_level, "4")
 
     def apply_to_job(self, job: JobListing) -> ApplicationResult:
-        """Apply to a single job with AI assistance"""
+        """Apply to a single job with advanced anti-detection measures"""
         start_time = time.time()
 
         try:
             logger.info(f"📝 Applying to: {job.title} at {job.company}")
+
+            # Add random delay before starting application
+            self._add_random_delays(2, 5)
 
             # Analyze job compatibility
             analysis = self.analyze_job_with_ollama(job)
@@ -518,9 +873,12 @@ Best regards,
                     time_taken=time.time() - start_time
                 )
 
-            # Navigate to job page
+            # Navigate to job page with human-like behavior
             self.driver.get(job.url)
-            time.sleep(2)
+            self._add_random_delays(3, 6)
+            
+            # Simulate reading the job description
+            self._simulate_job_reading_behavior()
 
             # Get job description for better analysis
             try:
@@ -720,10 +1078,10 @@ Best regards,
             return False
 
     def _fill_application_form(self, job: JobListing) -> bool:
-        """Fill application form with AI assistance"""
+        """Fill application form with advanced anti-detection measures"""
         try:
-            # Wait for form to load
-            time.sleep(2)
+            # Wait for form to load with random delay
+            self._add_random_delays(2, 4)
 
             # Handle multiple form pages
             max_pages = 5
@@ -733,15 +1091,23 @@ Best regards,
                 current_page += 1
                 logger.info(f"📝 Filling form page {current_page}")
 
+                # Simulate human behavior before filling each page
+                self._simulate_human_behavior()
+
                 # Fill current page
                 if not self._fill_current_form_page(job):
                     logger.warning(f"⚠️ Failed to fill form page {current_page}")
 
+                # Add random delay after filling page
+                self._add_random_delays(1, 3)
+
                 # Check for next button
                 next_button = self._find_next_button()
                 if next_button:
+                    # Simulate human behavior before clicking next
+                    self._simulate_human_behavior()
                     next_button.click()
-                    time.sleep(2)
+                    self._add_random_delays(2, 4)
                 else:
                     # No next button, we're on the last page
                     break
@@ -767,9 +1133,9 @@ Best regards,
                     if field_type in ["text", "email", "tel"] or field.tag_name == "textarea":
                         value = self._get_field_value(field_name, field_label, field_type)
                         if value:
-                            field.clear()
-                            field.send_keys(value)
-                            time.sleep(0.5)
+                            # Use human-like typing instead of direct send_keys
+                            self._human_like_typing(field, value)
+                            self._add_random_delays(0.5, 1.5)
 
                     elif field.tag_name == "select":
                         self._handle_select_field(field, field_name, field_label)

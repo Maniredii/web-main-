@@ -13,13 +13,12 @@ Pillow>=10.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 
-# Ollama Integration for AI features
-langchain>=0.1.0
+# Ollama Integration for AI features (compatible with Python 3.10)
+langchain>=0.0.350
 langchain-community>=0.0.20
 langchain-ollama>=0.1.0
 
 # Browser automation framework
-browser-use>=1.0.0
 playwright>=1.40.0
 
 # Data handling and reporting

@@ -15,6 +15,26 @@
     "enable_computer_vision": true,
     "max_pages": 10
   },
+  "security": {
+    "enable_stealth_mode": true,
+    "enable_human_behavior_simulation": true,
+    "enable_random_delays": true,
+    "enable_user_agent_rotation": true,
+    "enable_window_size_randomization": true,
+    "enable_mouse_movement_simulation": true,
+    "enable_scroll_behavior_simulation": true,
+    "enable_typing_simulation": true,
+    "min_delay_between_actions": 1,
+    "max_delay_between_actions": 3,
+    "min_delay_between_applications": 30,
+    "max_delay_between_applications": 60,
+    "enable_captcha_handling": true,
+    "enable_2fa_handling": true,
+    "enable_security_challenge_handling": true,
+    "max_retry_attempts": 3,
+    "enable_proxy_rotation": false,
+    "enable_fingerprint_randomization": true
+  },
   "linkedin": {
     "credentials": {
       "email": "your email",
