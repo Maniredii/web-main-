@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-08-04T16:02:49.040018",
+  "summary": {
+    "total_jobs_found": 0,
+    "total_applications_sent": 0,
+    "total_applications_failed": 0,
+    "overall_success_rate": 0,
+    "total_duration": 169.03862881660461
+  },
+  "platform_results": [
+    {
+      "platform": "linkedin",
+      "jobs_found": 0,
+      "applications_sent": 0,
+      "applications_failed": 0,
+      "success_rate": 0,
+      "duration": 2.508554697036743,
+      "errors": [
+        "'search_criteria'"
+      ]
+    },
+    {
+      "platform": "indeed",
+      "jobs_found": 0,
+      "applications_sent": 0,
+      "applications_failed": 0,
+      "success_rate": 0,
+      "duration": 166.50707340240479,
+      "errors": []
+    },
+    {
+      "platform": "glassdoor",
+      "jobs_found": 0,
+      "applications_sent": 0,
+      "applications_failed": 0,
+      "success_rate": 0,
+      "duration": 0.023000717163085938,
+      "errors": []
+    }
+  ]
+}

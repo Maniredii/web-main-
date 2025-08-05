@@ -39,7 +39,7 @@ try:
     PROFILE_INTEGRATION_AVAILABLE = True
 except ImportError:
     PROFILE_INTEGRATION_AVAILABLE = False
-    print("Profile integration not available - using legacy profile loading")
+    logger.warning("Profile integration not available - using legacy profile loading")
 
 # Import user details loader
 try:
@@ -47,7 +47,7 @@ try:
     USER_DETAILS_AVAILABLE = True
 except ImportError:
     USER_DETAILS_AVAILABLE = False
-    print("User details loader not available")
+    logger.warning("User details loader not available")
 
 # Import resume optimization system
 try:
@@ -57,7 +57,7 @@ try:
     RESUME_OPTIMIZATION_AVAILABLE = True
 except ImportError:
     RESUME_OPTIMIZATION_AVAILABLE = False
-    print("Resume optimization system not available")
+    logger.warning("Resume optimization system not available")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
