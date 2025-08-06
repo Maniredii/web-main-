@@ -7,9 +7,14 @@ Combines all features into a single Flask application with modern web interface
 import os
 import json
 import time
+import random
 import logging
 import requests
 import threading
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
@@ -92,7 +97,11 @@ class JobAnalyzer:
     def __init__(self, ollama_endpoint: str = "http://localhost:11434", model: str = "qwen2.5:7b"):
         self.ollama_endpoint = ollama_endpoint
         self.model = model
-        self.available = self._check_ollama_availability()
+        self.zai_api_key = os.getenv('ZAI_API_KEY')
+        self.zai_api_url = os.getenv('ZAI_API_URL', 'https://api.z.ai/v1')
+        self.ollama_available = self._check_ollama_availability()
+        self.zai_available = self._check_zai_availability()
+        self.available = self.ollama_available or self.zai_available
         
     def _check_ollama_availability(self) -> bool:
         try:
@@ -101,9 +110,13 @@ class JobAnalyzer:
         except Exception as e:
             logger.warning(f"Ollama not available: {e}")
             return False
+            
+    def _check_zai_availability(self) -> bool:
+        """Check if Z.ai API is available"""
+        return bool(self.zai_api_key)
     
     def query_ollama(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
-        if not self.available:
+        if not self.ollama_available:
             return None
             
         try:
@@ -132,6 +145,61 @@ class JobAnalyzer:
         except Exception as e:
             logger.error(f"Ollama query error: {e}")
             return None
+            
+    def query_zai(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
+        """Query Z.ai API"""
+        if not self.zai_available:
+            return None
+            
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.zai_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "zephyr-7b-beta",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.1
+            }
+            
+            response = requests.post(
+                f"{self.zai_api_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+            else:
+                logger.error(f"Z.ai query failed: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Z.ai query error: {e}")
+            return None
+            
+    def query_ai(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
+        """Query AI service (Ollama or Z.ai)"""
+        # Try Z.ai first if available
+        if self.zai_available:
+            response = self.query_zai(prompt, max_tokens)
+            if response:
+                logger.info("Using Z.ai API for AI analysis")
+                return response
+                
+        # Fallback to Ollama
+        if self.ollama_available:
+            response = self.query_ollama(prompt, max_tokens)
+            if response:
+                logger.info("Using Ollama for AI analysis")
+                return response
+                
+        return None
     
     def analyze_job_compatibility(self, job_data: JobData, user_profile: Dict[str, Any]) -> Dict[str, Any]:
         if not self.available:
@@ -161,7 +229,7 @@ class JobAnalyzer:
         }}
         """
         
-        response = self.query_ollama(prompt)
+        response = self.query_ai(prompt)
         if response:
             try:
                 return json.loads(response)
@@ -206,7 +274,7 @@ class JobAnalyzer:
         Write a compelling cover letter that highlights relevant experience and skills.
         """
         
-        response = self.query_ollama(prompt)
+        response = self.query_ai(prompt)
         if response:
             return response
         
@@ -284,7 +352,7 @@ class BaseAutomation:
     
     def _add_random_delay(self, min_delay=1, max_delay=3):
         """Add random delay between actions"""
-        delay = time.uniform(min_delay, max_delay)
+        delay = random.uniform(min_delay, max_delay)
         time.sleep(delay)
     
     def _human_like_typing(self, element, text):
@@ -644,7 +712,7 @@ class MultiPlatformManager:
     
     def _add_random_delay(self, min_delay=30, max_delay=60):
         """Add random delay between applications"""
-        delay = time.uniform(min_delay, max_delay)
+        delay = random.uniform(min_delay, max_delay)
         time.sleep(delay)
 
 # Flask Routes

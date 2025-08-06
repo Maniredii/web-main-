@@ -1,0 +1,13 @@
+{
+  "jobs_found": 0,
+  "applications_sent": 0,
+  "errors": [],
+  "platforms": {
+    "glassdoor": {
+      "jobs_found": 0,
+      "applications_sent": 0,
+      "errors": [],
+      "jobs": []
+    }
+  }
+}
