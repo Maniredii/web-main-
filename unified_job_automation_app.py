@@ -98,7 +98,7 @@ class JobAnalyzer:
         self.ollama_endpoint = ollama_endpoint
         self.model = model
         self.zai_api_key = os.getenv('ZAI_API_KEY')
-        self.zai_api_url = os.getenv('ZAI_API_URL', 'https://api.z.ai/v1')
+        self.zai_api_url = os.getenv('ZAI_API_URL', 'https://z.ai/api/v1')
         self.ollama_available = self._check_ollama_availability()
         self.zai_available = self._check_zai_availability()
         self.available = self.ollama_available or self.zai_available
@@ -705,8 +705,9 @@ class MultiPlatformManager:
             
         except Exception as e:
             results['errors'].append(f"Platform {platform} failed: {e}")
-        finally:
-            automation.close_browser()
+        
+        # Don't close browser automatically - let user control it
+        # automation.close_browser()
         
         return results
     
@@ -760,6 +761,7 @@ def start_automation():
             
             try:
                 manager = MultiPlatformManager(app_state.config, app_state.user_profile)
+                app_state.manager = manager  # Store manager instance
                 manager.setup_automations()
                 
                 results = manager.run_automation(platform)
@@ -795,11 +797,28 @@ def stop_automation():
     app_state.is_running = False
     app_state.current_platform = None
     
-    if app_state.browser:
-        app_state.browser.quit()
-        app_state.browser = None
+    # Close all automation browsers
+    if hasattr(app_state, 'manager') and app_state.manager:
+        for automation in app_state.manager.automations.values():
+            if hasattr(automation, 'browser') and automation.browser:
+                try:
+                    automation.close_browser()
+                except:
+                    pass
     
     return jsonify({'message': 'Automation stopped'})
+
+@app.route('/api/close-browser', methods=['POST'])
+def close_browser():
+    """Manually close browser"""
+    try:
+        if hasattr(app_state, 'manager') and app_state.manager:
+            for automation in app_state.manager.automations.values():
+                if hasattr(automation, 'browser') and automation.browser:
+                    automation.close_browser()
+        return jsonify({'message': 'Browser closed successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_job():

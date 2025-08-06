@@ -34,6 +34,9 @@
                                     <button id="stopBtn" class="btn btn-danger btn-lg" disabled>
                                         <i class="fas fa-stop"></i> Stop Automation
                                     </button>
+                                    <button id="closeBrowserBtn" class="btn btn-warning btn-lg">
+                                        <i class="fas fa-times"></i> Close Browser
+                                    </button>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -223,6 +226,22 @@
             .catch(error => {
                 console.error('Error stopping automation:', error);
                 alert('Error stopping automation');
+            });
+        });
+        
+        document.getElementById('closeBrowserBtn').addEventListener('click', () => {
+            fetch('/api/close-browser', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Browser closed successfully');
+                }
+            })
+            .catch(error => {
+                console.error('Error closing browser:', error);
+                alert('Error closing browser');
             });
         });
         
