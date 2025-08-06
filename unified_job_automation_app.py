@@ -11,10 +11,6 @@ import random
 import logging
 import requests
 import threading
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
@@ -94,7 +90,7 @@ class ApplicationResult:
 
 # AI Job Analyzer
 class JobAnalyzer:
-    def __init__(self, ollama_endpoint: str = "http://localhost:11434", model: str = "qwen2.5:7b"):
+    def __init__(self, ollama_endpoint: str = "http://localhost:11434", model: str = "llama3:latest"):
         self.ollama_endpoint = ollama_endpoint
         self.model = model
         self.ollama_available = self._check_ollama_availability()

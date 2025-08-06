@@ -54,7 +54,7 @@ pip install -r requirements.txt
 ```bash
 # Download and install Ollama from https://ollama.ai
 # Then pull the recommended model:
-ollama pull qwen2.5:7b
+ollama pull llama3:latest
 ```
 
 ## 🛠️ Setup Options
