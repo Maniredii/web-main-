@@ -1,0 +1,17 @@
+{
+  "jobs_found": 0,
+  "applications_sent": 0,
+  "errors": [
+    "LinkedIn login failed"
+  ],
+  "platforms": {
+    "linkedin": {
+      "jobs_found": 0,
+      "applications_sent": 0,
+      "errors": [
+        "LinkedIn login failed"
+      ],
+      "jobs": []
+    }
+  }
+}
