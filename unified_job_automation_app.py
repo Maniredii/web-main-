@@ -97,11 +97,8 @@ class JobAnalyzer:
     def __init__(self, ollama_endpoint: str = "http://localhost:11434", model: str = "qwen2.5:7b"):
         self.ollama_endpoint = ollama_endpoint
         self.model = model
-        self.zai_api_key = os.getenv('ZAI_API_KEY')
-        self.zai_api_url = os.getenv('ZAI_API_URL', 'https://z.ai/api/v1')
         self.ollama_available = self._check_ollama_availability()
-        self.zai_available = self._check_zai_availability()
-        self.available = self.ollama_available or self.zai_available
+        self.available = self.ollama_available
         
     def _check_ollama_availability(self) -> bool:
         try:
@@ -111,9 +108,7 @@ class JobAnalyzer:
             logger.warning(f"Ollama not available: {e}")
             return False
             
-    def _check_zai_availability(self) -> bool:
-        """Check if Z.ai API is available"""
-        return bool(self.zai_api_key)
+
     
     def query_ollama(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
         if not self.ollama_available:
@@ -146,53 +141,10 @@ class JobAnalyzer:
             logger.error(f"Ollama query error: {e}")
             return None
             
-    def query_zai(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
-        """Query Z.ai API"""
-        if not self.zai_available:
-            return None
-            
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.zai_api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            payload = {
-                "model": "zephyr-7b-beta",
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": max_tokens,
-                "temperature": 0.1
-            }
-            
-            response = requests.post(
-                f"{self.zai_api_url}/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                return response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            else:
-                logger.error(f"Z.ai query failed: {response.status_code} - {response.text}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Z.ai query error: {e}")
-            return None
+
             
     def query_ai(self, prompt: str, max_tokens: int = 1024) -> Optional[str]:
-        """Query AI service (Ollama or Z.ai)"""
-        # Try Z.ai first if available
-        if self.zai_available:
-            response = self.query_zai(prompt, max_tokens)
-            if response:
-                logger.info("Using Z.ai API for AI analysis")
-                return response
-                
-        # Fallback to Ollama
+        """Query AI service (Ollama)"""
         if self.ollama_available:
             response = self.query_ollama(prompt, max_tokens)
             if response:
