@@ -788,6 +788,83 @@ class JobScraper:
             logger.debug(f"Error finding continue button: {e}")
             return None
 
+    def _find_login_button(self):
+        """Find the login button on Glassdoor login page"""
+        try:
+            login_selectors = [
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.CSS_SELECTOR, "button:contains('Sign In')"),
+                (By.CSS_SELECTOR, "button:contains('Login')"),
+                (By.XPATH, "//button[contains(text(), 'Sign In')]"),
+                (By.XPATH, "//button[contains(text(), 'Sign in')]"),
+                (By.XPATH, "//button[contains(text(), 'Login')]"),
+                (By.XPATH, "//button[contains(text(), 'login')]"),
+                (By.XPATH, "//button[contains(text(), 'SIGN IN')]"),
+                (By.CSS_SELECTOR, "button[data-testid*='login']"),
+                (By.CSS_SELECTOR, "button[data-testid*='signin']"),
+                (By.CSS_SELECTOR, "button[aria-label*='login']"),
+                (By.CSS_SELECTOR, "button[aria-label*='signin']"),
+                (By.CSS_SELECTOR, "button.login"),
+                (By.CSS_SELECTOR, "button.signin"),
+                (By.CSS_SELECTOR, "button[class*='login']"),
+                (By.CSS_SELECTOR, "button[class*='signin']"),
+            ]
+            
+            for by, selector in login_selectors:
+                try:
+                    elements = self.driver.find_elements(by, selector)
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            logger.debug(f"Found login button: {selector}")
+                            return element
+                except Exception:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error finding login button: {e}")
+            return None
+
+    def _check_for_error_messages(self) -> bool:
+        """Check for error messages on the page after login attempt"""
+        try:
+            error_selectors = [
+                (By.CSS_SELECTOR, ".error"),
+                (By.CSS_SELECTOR, ".alert"),
+                (By.CSS_SELECTOR, ".message"),
+                (By.CSS_SELECTOR, "[class*='error']"),
+                (By.CSS_SELECTOR, "[class*='alert']"),
+                (By.CSS_SELECTOR, "[class*='message']"),
+                (By.XPATH, "//div[contains(@class, 'error')]"),
+                (By.XPATH, "//div[contains(@class, 'alert')]"),
+                (By.XPATH, "//div[contains(@class, 'message')]"),
+                (By.XPATH, "//span[contains(@class, 'error')]"),
+                (By.XPATH, "//p[contains(@class, 'error')]"),
+                (By.XPATH, "//*[contains(text(), 'Invalid')]"),
+                (By.XPATH, "//*[contains(text(), 'incorrect')]"),
+                (By.XPATH, "//*[contains(text(), 'failed')]"),
+                (By.XPATH, "//*[contains(text(), 'Error')]"),
+            ]
+            
+            for by, selector in error_selectors:
+                try:
+                    elements = self.driver.find_elements(by, selector)
+                    for element in elements:
+                        if element.is_displayed():
+                            error_text = element.text.strip()
+                            if error_text and len(error_text) > 0:
+                                logger.warning(f"Error message detected: {error_text}")
+                                return True
+                except Exception:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            logger.debug(f"Error checking for error messages: {e}")
+            return False
+
     def _human_like_delay(self, min_seconds=1, max_seconds=3):
         """Add human-like random delay between actions with micro-variations"""
         # Add micro-variations to make delays more realistic
