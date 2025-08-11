@@ -1076,7 +1076,7 @@ class JobScraper:
             return False
 
     def _is_linkedin_logged_in(self) -> bool:
-        """Check if user is logged into LinkedIn"""
+        """Check if user is logged into LinkedIn with enhanced detection"""
         try:
             # Look for elements that indicate logged-in state
             logged_in_indicators = [
@@ -1087,20 +1087,43 @@ class JobScraper:
                 "//button[contains(text(), 'Sign Out')]",
                 "//a[contains(text(), 'Sign Out')]",
                 "//div[contains(@class, 'global-nav')]",
-                "//nav[contains(@class, 'global-nav')]"
+                "//nav[contains(@class, 'global-nav')]",
+                "//div[contains(@class, 'identity')]",
+                "//div[contains(@class, 'user-menu')]",
+                "//button[contains(@aria-label, 'profile')]",
+                "//img[contains(@alt, 'profile')]"
             ]
             
+            # Check for logged-in indicators
             for indicator in logged_in_indicators:
                 try:
                     element = self.driver.find_element(By.XPATH, indicator)
-                    if element:
+                    if element and element.is_displayed():
+                        logger.debug(f"Found logged-in indicator: {indicator}")
                         return True
                 except:
                     continue
             
-            # Check if we're not on login page
-            current_url = self.driver.current_url
-            return "login" not in current_url.lower()
+            # Check if we're not on login page and no sign-in buttons are visible
+            current_url = self.driver.current_url.lower()
+            if "login" in current_url:
+                return False
+            
+            # Check if sign-in buttons are still visible (indicates not fully logged in)
+            try:
+                signin_buttons = self.driver.find_elements(By.XPATH, "//button[contains(text(), 'Sign in')] | //a[contains(text(), 'Sign in')]")
+                join_buttons = self.driver.find_elements(By.XPATH, "//button[contains(text(), 'Join now')] | //a[contains(text(), 'Join now')]")
+                
+                if signin_buttons or join_buttons:
+                    for button in signin_buttons + join_buttons:
+                        if button.is_displayed():
+                            logger.debug("Sign-in/Join buttons still visible - not fully logged in")
+                            return False
+            except:
+                pass
+            
+            # If we get here, assume we're logged in
+            return True
             
         except Exception as e:
             logger.warning(f"Could not determine LinkedIn login status: {e}")
@@ -1127,15 +1150,20 @@ class JobScraper:
             login_success = self._handle_linkedin_login(wait)
             
             if login_success:
-                # Save cookies for future use
-                self._save_linkedin_cookies()
-                
-                # Navigate to job search
-                search_url = self._build_linkedin_search_url(keywords, location)
-                self.driver.get(search_url)
-                self._human_like_delay(2, 3)
-                logger.info(f"LinkedIn login successful and navigated to job search: {search_url}")
-                return True
+                # Wait for page to fully load and handle any post-login challenges
+                if self._wait_for_linkedin_page_ready():
+                    # Save cookies for future use
+                    self._save_linkedin_cookies()
+                    
+                    # Navigate to job search
+                    search_url = self._build_linkedin_search_url(keywords, location)
+                    self.driver.get(search_url)
+                    self._human_like_delay(2, 3)
+                    logger.info(f"LinkedIn login successful and navigated to job search: {search_url}")
+                    return True
+                else:
+                    logger.error("LinkedIn page not ready after login")
+                    return False
             else:
                 logger.error("LinkedIn login failed")
                 return False
@@ -1143,6 +1171,91 @@ class JobScraper:
         except Exception as e:
             logger.error(f"Error in LinkedIn login and search: {e}")
             return False
+
+    def _wait_for_linkedin_page_ready(self) -> bool:
+        """Wait for LinkedIn page to be fully ready after login"""
+        try:
+            logger.info("Waiting for LinkedIn page to be fully ready...")
+            
+            # Wait for page to load
+            self._wait_for_page_ready(20)
+            
+            # Check for any post-login challenges or prompts
+            if self._handle_linkedin_post_login_challenges():
+                logger.info("LinkedIn post-login challenges handled successfully")
+            
+            # Wait a bit more for everything to settle
+            self._human_like_delay(3, 5)
+            
+            # Final verification that we're properly logged in
+            if self._is_linkedin_logged_in():
+                logger.info("LinkedIn page is fully ready and logged in")
+                return True
+            else:
+                logger.warning("LinkedIn page not fully ready after waiting")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error waiting for LinkedIn page to be ready: {e}")
+            return False
+
+    def _handle_linkedin_post_login_challenges(self) -> bool:
+        """Handle any challenges that appear after LinkedIn login"""
+        try:
+            # Check for common post-login challenges
+            challenges = [
+                # Security verification prompts
+                "//div[contains(text(), 'Verify your identity')]",
+                "//div[contains(text(), 'Security check')]",
+                "//div[contains(text(), 'Verify your account')]",
+                "//div[contains(text(), 'Additional verification')]",
+                
+                # Location/device verification
+                "//div[contains(text(), 'New device')]",
+                "//div[contains(text(), 'Unusual activity')]",
+                "//div[contains(text(), 'Location verification')]",
+                
+                # Profile completion prompts
+                "//div[contains(text(), 'Complete your profile')]",
+                "//div[contains(text(), 'Add a photo')]",
+                "//div[contains(text(), 'Connect with people')]",
+                
+                # Cookie consent
+                "//div[contains(text(), 'Accept cookies')]",
+                "//div[contains(text(), 'Cookie preferences')]",
+                "//button[contains(text(), 'Accept')]",
+                "//button[contains(text(), 'Allow')]"
+            ]
+            
+            for challenge in challenges:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, challenge)
+                    for element in elements:
+                        if element.is_displayed():
+                            logger.info(f"Found post-login challenge: {challenge}")
+                            
+                            # Handle cookie consent automatically
+                            if "cookie" in challenge.lower() or "accept" in challenge.lower():
+                                try:
+                                    element.click()
+                                    logger.info("Clicked cookie consent button")
+                                    self._human_like_delay(1, 2)
+                                    return True
+                                except:
+                                    pass
+                            
+                            # For other challenges, log and wait
+                            logger.info("Post-login challenge detected - waiting for manual resolution")
+                            self._human_like_delay(5, 10)
+                            return True
+                except:
+                    continue
+            
+            return True  # No challenges found
+            
+        except Exception as e:
+            logger.debug(f"Error handling post-login challenges: {e}")
+            return True
 
     def _handle_linkedin_login(self, wait) -> bool:
         """Handle LinkedIn login with enhanced human-like behavior"""
@@ -1364,10 +1477,10 @@ class JobScraper:
             return False
 
     def _verify_linkedin_login(self) -> bool:
-        """Verify LinkedIn login success"""
+        """Verify LinkedIn login success with enhanced session recognition"""
         try:
-            # Wait a bit for page to load after login
-            self._human_like_delay(2, 4)
+            # Wait longer for page to fully load and session to be recognized
+            self._human_like_delay(5, 8)
             
             # Check current URL - should not be on login page
             current_url = self.driver.current_url.lower()
@@ -1375,16 +1488,86 @@ class JobScraper:
                 logger.warning("Still on login page after login attempt")
                 return False
             
-            # Check for logged-in indicators
-            if self._is_linkedin_logged_in():
-                logger.info("LinkedIn login verification successful")
-                return True
-            else:
-                logger.warning("LinkedIn login verification failed")
-                return False
+            # Wait for and check multiple logged-in indicators
+            max_attempts = 5
+            for attempt in range(max_attempts):
+                logger.info(f"LinkedIn login verification attempt {attempt + 1}/{max_attempts}")
+                
+                # Check for logged-in indicators
+                if self._is_linkedin_logged_in():
+                    logger.info("LinkedIn login verification successful")
+                    return True
+                
+                # Wait a bit more and try again
+                if attempt < max_attempts - 1:
+                    logger.info("Session not fully recognized yet, waiting...")
+                    self._human_like_delay(3, 5)
+                    
+                    # Try refreshing the page to trigger session recognition
+                    if attempt == 2:  # On third attempt
+                        logger.info("Refreshing page to trigger session recognition...")
+                        self.driver.refresh()
+                        self._human_like_delay(3, 5)
+            
+            logger.warning("LinkedIn login verification failed after multiple attempts")
+            return False
                 
         except Exception as e:
             logger.error(f"Error verifying LinkedIn login: {e}")
+            return False
+
+    def _is_linkedin_logged_in(self) -> bool:
+        """Check if user is logged into LinkedIn with enhanced detection"""
+        try:
+            # Look for elements that indicate logged-in state
+            logged_in_indicators = [
+                "//a[contains(@href, 'profile')]",
+                "//a[contains(text(), 'Profile')]",
+                "//div[contains(@class, 'user')]",
+                "//span[contains(text(), 'batave3857')]",
+                "//button[contains(text(), 'Sign Out')]",
+                "//a[contains(text(), 'Sign Out')]",
+                "//div[contains(@class, 'global-nav')]",
+                "//nav[contains(@class, 'global-nav')]",
+                "//div[contains(@class, 'identity')]",
+                "//div[contains(@class, 'user-menu')]",
+                "//button[contains(@aria-label, 'profile')]",
+                "//img[contains(@alt, 'profile')]"
+            ]
+            
+            # Check for logged-in indicators
+            for indicator in logged_in_indicators:
+                try:
+                    element = self.driver.find_element(By.XPATH, indicator)
+                    if element and element.is_displayed():
+                        logger.debug(f"Found logged-in indicator: {indicator}")
+                        return True
+                except:
+                    continue
+            
+            # Check if we're not on login page and no sign-in buttons are visible
+            current_url = self.driver.current_url.lower()
+            if "login" in current_url:
+                return False
+            
+            # Check if sign-in buttons are still visible (indicates not fully logged in)
+            try:
+                signin_buttons = self.driver.find_elements(By.XPATH, "//button[contains(text(), 'Sign in')] | //a[contains(text(), 'Sign in')]")
+                join_buttons = self.driver.find_elements(By.XPATH, "//button[contains(text(), 'Join now')] | //a[contains(text(), 'Join now')]")
+                
+                if signin_buttons or join_buttons:
+                    for button in signin_buttons + join_buttons:
+                        if button.is_displayed():
+                            logger.debug("Sign-in/Join buttons still visible - not fully logged in")
+                            return False
+            except:
+                pass
+            
+            # If we get here, assume we're logged in
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Could not determine LinkedIn login status: {e}")
             return False
 
     def _save_linkedin_cookies(self, file_path="linkedin_cookies.json"):
