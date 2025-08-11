@@ -3,6 +3,7 @@
 # Core automation
 selenium>=4.15.0
 webdriver-manager>=4.0.0
+undetected-chromedriver>=3.5.0
 
 # Computer Vision for form detection
 opencv-python>=4.8.0
@@ -47,5 +48,8 @@ python-dateutil>=2.8.2
 
 # Web dashboard
 Flask>=2.3.0
+
+# GUI and packaging
+pyinstaller>=5.13.0
 
 # Note: tkinter is included with Python standard library

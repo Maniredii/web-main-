@@ -122,7 +122,7 @@ Edit `config.json` to customize:
 ```bash
 export LINKEDIN_PASSWORD="your_password"
 export OLLAMA_ENDPOINT="http://localhost:11434"
-export OLLAMA_MODEL="qwen2.5:7b"
+export OLLAMA_MODEL="llama3:latest"
 ```
 
 ## 🔧 Troubleshooting
