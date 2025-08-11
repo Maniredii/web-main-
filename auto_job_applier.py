@@ -1048,18 +1048,378 @@ class JobScraper:
             return False
     
     def _open_linkedin_search(self, keywords: str, location: str) -> bool:
-        """Open LinkedIn and perform search"""
+        """Open LinkedIn, login, and perform search using AI-assisted login detection with session management"""
         try:
-            url = f"https://www.linkedin.com/jobs/search/?keywords={keywords.replace(' ', '%20')}"
-            if location:
-                url += f"&location={location.replace(' ', '%20')}"
+            # Try to load existing LinkedIn session first
+            if self._load_linkedin_cookies():
+                logger.info("Attempting to use saved LinkedIn session")
+                self.driver.get("https://www.linkedin.com")
+                self._human_like_delay(2, 4)
+                
+                # Check if we're still logged in
+                if self._is_linkedin_logged_in():
+                    logger.info("Successfully restored LinkedIn session - already logged in")
+                    # Navigate directly to job search
+                    search_url = self._build_linkedin_search_url(keywords, location)
+                    self.driver.get(search_url)
+                    self._human_like_delay(2, 3)
+                    logger.info(f"Navigated to LinkedIn job search with saved session: {search_url}")
+                    return True
+                else:
+                    logger.info("Saved LinkedIn session expired, proceeding with login")
             
-            self.driver.get(url)
-            logger.info(f"Opened LinkedIn search: {url}")
-            return True
+            # Proceed with login if no valid session
+            return self._perform_linkedin_login_and_search(keywords, location)
             
         except Exception as e:
             logger.error(f"Error opening LinkedIn: {e}")
+            return False
+
+    def _is_linkedin_logged_in(self) -> bool:
+        """Check if user is logged into LinkedIn"""
+        try:
+            # Look for elements that indicate logged-in state
+            logged_in_indicators = [
+                "//a[contains(@href, 'profile')]",
+                "//a[contains(text(), 'Profile')]",
+                "//div[contains(@class, 'user')]",
+                "//span[contains(text(), 'batave3857')]",
+                "//button[contains(text(), 'Sign Out')]",
+                "//a[contains(text(), 'Sign Out')]",
+                "//div[contains(@class, 'global-nav')]",
+                "//nav[contains(@class, 'global-nav')]"
+            ]
+            
+            for indicator in logged_in_indicators:
+                try:
+                    element = self.driver.find_element(By.XPATH, indicator)
+                    if element:
+                        return True
+                except:
+                    continue
+            
+            # Check if we're not on login page
+            current_url = self.driver.current_url
+            return "login" not in current_url.lower()
+            
+        except Exception as e:
+            logger.warning(f"Could not determine LinkedIn login status: {e}")
+            return False
+
+    def _build_linkedin_search_url(self, keywords: str, location: str) -> str:
+        """Build LinkedIn job search URL"""
+        search_url = f"https://www.linkedin.com/jobs/search/?keywords={keywords.replace(' ', '%20')}"
+        if location:
+            search_url += f"&location={location.replace(' ', '%20')}"
+        return search_url
+
+    def _perform_linkedin_login_and_search(self, keywords: str, location: str) -> bool:
+        """Perform LinkedIn login and navigate to job search"""
+        try:
+            # Navigate to login page
+            self.driver.get("https://www.linkedin.com/login")
+            self._human_like_delay(3, 5)
+            
+            # Wait for page to load
+            wait = WebDriverWait(self.driver, 15)
+            
+            # Perform LinkedIn login
+            login_success = self._handle_linkedin_login(wait)
+            
+            if login_success:
+                # Save cookies for future use
+                self._save_linkedin_cookies()
+                
+                # Navigate to job search
+                search_url = self._build_linkedin_search_url(keywords, location)
+                self.driver.get(search_url)
+                self._human_like_delay(2, 3)
+                logger.info(f"LinkedIn login successful and navigated to job search: {search_url}")
+                return True
+            else:
+                logger.error("LinkedIn login failed")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error in LinkedIn login and search: {e}")
+            return False
+
+    def _handle_linkedin_login(self, wait) -> bool:
+        """Handle LinkedIn login with enhanced human-like behavior"""
+        try:
+            # Load credentials from file
+            credentials = self._load_user_credentials()
+            if not credentials or 'linkedin' not in credentials:
+                logger.error("LinkedIn credentials not found in user_credentials.json")
+                return False
+            
+            linkedin_creds = credentials['linkedin']
+            email = linkedin_creds.get('email')
+            password = linkedin_creds.get('password')
+            
+            if not email or not password:
+                logger.error("LinkedIn email or password missing from credentials")
+                return False
+            
+            # Wait for page to fully load
+            self._human_like_delay(3, 6)
+            
+            # Check for CAPTCHA or security challenges
+            if self._detect_captcha_or_challenge():
+                logger.warning("CAPTCHA or security challenge detected on LinkedIn - waiting for manual resolution")
+                if not self._wait_for_manual_captcha_resolution(240):
+                    self._take_debug_screenshot("linkedin_captcha_detected.png")
+                    return False
+            
+            # Step 1: Find and fill email field
+            email_field = self._find_linkedin_email_field(wait)
+            if not email_field:
+                logger.error("Could not find LinkedIn email field")
+                self._take_debug_screenshot("linkedin_email_field_not_found.png")
+                return False
+            
+            # Human-like email entry
+            self._human_like_typing(email_field, email)
+            logger.info("LinkedIn email entered with enhanced human-like typing")
+            
+            # Step 2: Find and fill password field
+            password_field = self._find_linkedin_password_field(wait)
+            if not password_field:
+                logger.error("Could not find LinkedIn password field")
+                self._take_debug_screenshot("linkedin_password_field_not_found.png")
+                return False
+            
+            # Human-like password entry
+            self._human_like_typing(password_field, password)
+            logger.info("LinkedIn password entered with enhanced human-like typing")
+            
+            # Step 3: Find and click sign in button
+            signin_button = self._find_linkedin_signin_button()
+            if not signin_button:
+                logger.error("Could not find LinkedIn sign in button")
+                self._take_debug_screenshot("linkedin_signin_button_not_found.png")
+                return False
+            
+            self._human_like_click(signin_button)
+            logger.info("Clicked LinkedIn sign in button with enhanced human-like behavior")
+            
+            # Step 4: Wait for login to complete
+            self._human_like_delay(4, 7)
+            
+            # Check for error messages after login attempt
+            if self._check_for_linkedin_error_messages():
+                logger.error("Error message detected after LinkedIn login attempt")
+                return False
+            
+            # Step 5: Verify login success
+            return self._verify_linkedin_login()
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced LinkedIn login flow: {e}")
+            self._take_debug_screenshot("linkedin_login_error.png")
+            return False
+
+    def _load_user_credentials(self) -> Optional[Dict[str, Any]]:
+        """Load user credentials from user_credentials.json file"""
+        try:
+            credentials_file = "user_credentials.json"
+            if not os.path.exists(credentials_file):
+                logger.warning(f"Credentials file {credentials_file} not found")
+                return None
+            
+            with open(credentials_file, 'r') as f:
+                credentials = json.load(f)
+            
+            logger.info("User credentials loaded successfully")
+            return credentials
+            
+        except Exception as e:
+            logger.error(f"Error loading user credentials: {e}")
+            return None
+
+    def _find_linkedin_email_field(self, wait):
+        """Find the email field on LinkedIn login page"""
+        try:
+            email_selectors = [
+                (By.CSS_SELECTOR, "input#username"),
+                (By.CSS_SELECTOR, "input[name='session_key']"),
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.CSS_SELECTOR, "input[placeholder*='email']"),
+                (By.CSS_SELECTOR, "input[placeholder*='Email']"),
+                (By.CSS_SELECTOR, "input[data-testid*='email']"),
+                (By.CSS_SELECTOR, "input[aria-label*='email']"),
+            ]
+            
+            for by, selector in email_selectors:
+                try:
+                    element = wait.until(EC.presence_of_element_located((by, selector)))
+                    if element.is_displayed() and element.is_enabled():
+                        logger.debug(f"Found LinkedIn email field: {selector}")
+                        return element
+                except Exception:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error finding LinkedIn email field: {e}")
+            return None
+
+    def _find_linkedin_password_field(self, wait):
+        """Find the password field on LinkedIn login page"""
+        try:
+            password_selectors = [
+                (By.CSS_SELECTOR, "input#password"),
+                (By.CSS_SELECTOR, "input[name='session_password']"),
+                (By.CSS_SELECTOR, "input[type='password']"),
+                (By.CSS_SELECTOR, "input[placeholder*='password']"),
+                (By.CSS_SELECTOR, "input[placeholder*='Password']"),
+                (By.CSS_SELECTOR, "input[data-testid*='password']"),
+                (By.CSS_SELECTOR, "input[aria-label*='password']"),
+            ]
+            
+            for by, selector in password_selectors:
+                try:
+                    element = wait.until(EC.presence_of_element_located((by, selector)))
+                    if element.is_displayed() and element.is_enabled():
+                        logger.debug(f"Found LinkedIn password field: {selector}")
+                        return element
+                except Exception:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error finding LinkedIn password field: {e}")
+            return None
+
+    def _find_linkedin_signin_button(self):
+        """Find the sign in button on LinkedIn login page"""
+        try:
+            signin_selectors = [
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.CSS_SELECTOR, "button:contains('Sign in')"),
+                (By.XPATH, "//button[contains(text(), 'Sign in')]"),
+                (By.XPATH, "//button[contains(text(), 'Sign In')]"),
+                (By.XPATH, "//button[contains(text(), 'SIGN IN')]"),
+                (By.CSS_SELECTOR, "button[data-testid*='signin']"),
+                (By.CSS_SELECTOR, "button[aria-label*='signin']"),
+                (By.CSS_SELECTOR, "button.signin"),
+                (By.CSS_SELECTOR, "button[class*='signin']"),
+            ]
+            
+            for by, selector in signin_selectors:
+                try:
+                    elements = self.driver.find_elements(by, selector)
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            logger.debug(f"Found LinkedIn sign in button: {selector}")
+                            return element
+                except Exception:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error finding LinkedIn sign in button: {e}")
+            return None
+
+    def _check_for_linkedin_error_messages(self) -> bool:
+        """Check for error messages on LinkedIn page after login attempt"""
+        try:
+            error_selectors = [
+                (By.CSS_SELECTOR, ".error"),
+                (By.CSS_SELECTOR, ".alert"),
+                (By.CSS_SELECTOR, ".message"),
+                (By.CSS_SELECTOR, "[class*='error']"),
+                (By.CSS_SELECTOR, "[class*='alert']"),
+                (By.CSS_SELECTOR, "[class*='message']"),
+                (By.XPATH, "//div[contains(@class, 'error')]"),
+                (By.XPATH, "//div[contains(@class, 'alert')]"),
+                (By.XPATH, "//div[contains(@class, 'message')]"),
+                (By.XPATH, "//span[contains(@class, 'error')]"),
+                (By.XPATH, "//p[contains(@class, 'error')]"),
+                (By.XPATH, "//*[contains(text(), 'Invalid')]"),
+                (By.XPATH, "//*[contains(text(), 'incorrect')]"),
+                (By.XPATH, "//*[contains(text(), 'failed')]"),
+                (By.XPATH, "//*[contains(text(), 'Error')]"),
+            ]
+            
+            for by, selector in error_selectors:
+                try:
+                    elements = self.driver.find_elements(by, selector)
+                    for element in elements:
+                        if element.is_displayed():
+                            error_text = element.text.strip()
+                            if error_text and len(error_text) > 0:
+                                logger.warning(f"LinkedIn error message detected: {error_text}")
+                                return True
+                except Exception:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            logger.debug(f"Error checking for LinkedIn error messages: {e}")
+            return False
+
+    def _verify_linkedin_login(self) -> bool:
+        """Verify LinkedIn login success"""
+        try:
+            # Wait a bit for page to load after login
+            self._human_like_delay(2, 4)
+            
+            # Check current URL - should not be on login page
+            current_url = self.driver.current_url.lower()
+            if "login" in current_url:
+                logger.warning("Still on login page after login attempt")
+                return False
+            
+            # Check for logged-in indicators
+            if self._is_linkedin_logged_in():
+                logger.info("LinkedIn login verification successful")
+                return True
+            else:
+                logger.warning("LinkedIn login verification failed")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error verifying LinkedIn login: {e}")
+            return False
+
+    def _save_linkedin_cookies(self, file_path="linkedin_cookies.json"):
+        """Save LinkedIn cookies for future use"""
+        try:
+            cookies = self.driver.get_cookies()
+            with open(file_path, 'w') as f:
+                json.dump(cookies, f)
+            logger.info(f"LinkedIn cookies saved to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save LinkedIn cookies: {e}")
+
+    def _load_linkedin_cookies(self, file_path="linkedin_cookies.json"):
+        """Load LinkedIn cookies to restore session"""
+        try:
+            if not os.path.exists(file_path):
+                logger.info("No saved LinkedIn cookies found")
+                return False
+            
+            with open(file_path, 'r') as f:
+                cookies = json.load(f)
+            
+            # Add cookies to driver
+            for cookie in cookies:
+                try:
+                    self.driver.add_cookie(cookie)
+                except Exception as e:
+                    logger.warning(f"Failed to add LinkedIn cookie: {e}")
+                    continue
+            
+            logger.info("LinkedIn cookies loaded successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to load LinkedIn cookies: {e}")
             return False
     
     def _open_glassdoor_search(self, keywords: str, location: str) -> bool:
@@ -1166,6 +1526,20 @@ class JobScraper:
     def _handle_new_glassdoor_login(self, wait) -> bool:
         """Handle the new Glassdoor login page with email flow using enhanced human-like behavior"""
         try:
+            # Load credentials from file
+            credentials = self._load_user_credentials()
+            if not credentials or 'glassdoor' not in credentials:
+                logger.error("Glassdoor credentials not found in user_credentials.json")
+                return False
+            
+            glassdoor_creds = credentials['glassdoor']
+            email = glassdoor_creds.get('email')
+            password = glassdoor_creds.get('password')
+            
+            if not email or not password:
+                logger.error("Glassdoor email or password missing from credentials")
+                return False
+            
             # Wait for page to fully load with human-like delay
             self._human_like_delay(3, 6)
 
@@ -1184,7 +1558,7 @@ class JobScraper:
                 return False
 
             # Human-like email entry with enhanced behavior
-            self._human_like_typing(email_field, "htmlcsjs@gmail.com")
+            self._human_like_typing(email_field, email)
             logger.info("Email entered with enhanced human-like typing")
 
             # Step 2: Look for "Continue with email" button
@@ -1210,7 +1584,7 @@ class JobScraper:
                 return False
 
             # Human-like password entry
-            self._human_like_typing(password_field, "Mani!8897")
+            self._human_like_typing(password_field, password)
             logger.info("Password entered with enhanced human-like typing")
 
             # Step 4: Find and click login button
@@ -1355,6 +1729,20 @@ class JobScraper:
     def _handle_traditional_glassdoor_login(self, wait) -> bool:
         """Handle traditional Glassdoor login page with enhanced human-like behavior"""
         try:
+            # Load credentials from file
+            credentials = self._load_user_credentials()
+            if not credentials or 'glassdoor' not in credentials:
+                logger.error("Glassdoor credentials not found in user_credentials.json")
+                return False
+            
+            glassdoor_creds = credentials['glassdoor']
+            email = glassdoor_creds.get('email')
+            password = glassdoor_creds.get('password')
+            
+            if not email or not password:
+                logger.error("Glassdoor email or password missing from credentials")
+                return False
+            
             # Wait for page to load
             self._human_like_delay(2, 4)
 
@@ -1389,7 +1777,7 @@ class JobScraper:
                 self._take_debug_screenshot("traditional_email_not_found.png")
                 return False
 
-            self._human_like_typing(email_field, "htmlcsjs@gmail.com")
+            self._human_like_typing(email_field, email)
             logger.info("Email entered in traditional login")
 
             # Find password field with multiple selectors
@@ -1416,59 +1804,38 @@ class JobScraper:
                 self._take_debug_screenshot("traditional_password_not_found.png")
                 return False
 
-            self._human_like_typing(password_field, "Mani!8897")
+            self._human_like_typing(password_field, password)
             logger.info("Password entered in traditional login")
 
-            # Find and click login button with multiple selectors
-            login_button_selectors = [
-                "button[type='submit']",
-                "input[type='submit']",
-                "button[contains(@class, 'login')]",
-                "button[contains(@class, 'signin')]",
-                "button[contains(text(), 'Sign in')]",
-                "button[contains(text(), 'Login')]"
-            ]
-
-            login_button = None
-            for selector in login_button_selectors:
-                try:
-                    if selector.startswith("button[contains(text()"):
-                        # Handle XPath-style selectors
-                        login_button = self.driver.find_element(By.XPATH, selector.replace("button[contains(text()", "//button[contains(text()"))
-                    else:
-                        login_button = self.driver.find_element(By.CSS_SELECTOR, selector)
-
-                    if login_button and login_button.is_displayed() and login_button.is_enabled():
-                        logger.info(f"Found login button with selector: {selector}")
-                        break
-                except:
-                    continue
-
+            # Find and click login button
+            login_button = self._find_login_button()
             if not login_button:
                 logger.error("Could not find login button in traditional login")
                 self._take_debug_screenshot("traditional_login_button_not_found.png")
                 return False
 
             self._human_like_click(login_button)
-            logger.info("Login button clicked in traditional login")
+            logger.info("Clicked login button in traditional login")
 
+            # Wait for login to complete
             self._human_like_delay(4, 7)
 
-            # If challenge appears after submit
+            # Check for CAPTCHA after login
             if self._detect_captcha_or_challenge():
-                logger.warning("CAPTCHA detected after login submit (traditional) - waiting for manual resolution")
+                logger.warning("CAPTCHA detected after traditional login - waiting for manual resolution")
                 if not self._wait_for_manual_captcha_resolution(240):
                     return False
 
             # Check for error messages
             if self._check_for_error_messages():
-                logger.error("Error message detected in traditional login")
+                logger.error("Error message detected after traditional login attempt")
                 return False
 
+            # Verify login success
             return self._verify_glassdoor_login_enhanced()
 
         except Exception as e:
-            logger.error(f"Error in traditional Glassdoor login flow: {e}")
+            logger.error(f"Error in traditional Glassdoor login: {e}")
             self._take_debug_screenshot("traditional_login_error.png")
             return False
     
