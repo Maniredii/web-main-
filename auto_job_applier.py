@@ -1160,7 +1160,14 @@ class JobScraper:
                     self.driver.get(search_url)
                     self._human_like_delay(2, 3)
                     logger.info(f"LinkedIn login successful and navigated to job search: {search_url}")
-                    return True
+                    
+                    # Now read job descriptions from the listings
+                    if self._read_linkedin_job_descriptions():
+                        logger.info("Successfully read job descriptions from LinkedIn")
+                        return True
+                    else:
+                        logger.warning("Failed to read job descriptions, but login was successful")
+                        return True  # Still return True since login worked
                 else:
                     logger.error("LinkedIn page not ready after login")
                     return False
@@ -1171,6 +1178,276 @@ class JobScraper:
         except Exception as e:
             logger.error(f"Error in LinkedIn login and search: {e}")
             return False
+
+    def _read_linkedin_job_descriptions(self) -> bool:
+        """Read job descriptions from LinkedIn job listings"""
+        try:
+            logger.info("Starting to read LinkedIn job descriptions...")
+            
+            # Wait for job listings to load
+            self._human_like_delay(3, 5)
+            
+            # Find all job listing cards
+            job_cards = self._find_linkedin_job_cards()
+            if not job_cards:
+                logger.warning("No job cards found on LinkedIn page")
+                return False
+            
+            logger.info(f"Found {len(job_cards)} job cards, reading descriptions...")
+            
+            # Read descriptions from first few job cards (to avoid overwhelming)
+            max_jobs_to_read = min(5, len(job_cards))
+            job_descriptions = []
+            
+            for i in range(max_jobs_to_read):
+                try:
+                    job_card = job_cards[i]
+                    job_info = self._extract_linkedin_job_info(job_card)
+                    
+                    if job_info and job_info.get('description'):
+                        job_descriptions.append(job_info)
+                        logger.info(f"Read job {i+1}: {job_info.get('title', 'Unknown')} at {job_info.get('company', 'Unknown')}")
+                        
+                        # Human-like delay between reading jobs
+                        self._human_like_delay(2, 4)
+                    
+                except Exception as e:
+                    logger.warning(f"Error reading job {i+1}: {e}")
+                    continue
+            
+            # Store the job descriptions for later use
+            if job_descriptions:
+                self.linkedin_job_descriptions = job_descriptions
+                logger.info(f"Successfully read {len(job_descriptions)} job descriptions")
+                return True
+            else:
+                logger.warning("No job descriptions were successfully read")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error reading LinkedIn job descriptions: {e}")
+            return False
+
+    def _find_linkedin_job_cards(self):
+        """Find all job listing cards on the LinkedIn page"""
+        try:
+            # Multiple selectors for job cards
+            job_card_selectors = [
+                "//div[contains(@class, 'job-card-container')]",
+                "//div[contains(@class, 'job-card')]",
+                "//li[contains(@class, 'job-card')]",
+                "//div[contains(@class, 'job-search-card')]",
+                "//div[contains(@class, 'job-result-card')]",
+                "//div[contains(@class, 'jobs-search__result-item')]",
+                "//div[contains(@class, 'job-search-results__list-item')]",
+                "//div[contains(@class, 'job-result')]",
+                "//div[contains(@class, 'job-listing')]"
+            ]
+            
+            for selector in job_card_selectors:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    if elements:
+                        logger.debug(f"Found {len(elements)} job cards using selector: {selector}")
+                        return elements
+                except Exception:
+                    continue
+            
+            logger.warning("No job cards found with any selector")
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error finding LinkedIn job cards: {e}")
+            return []
+
+    def _extract_linkedin_job_info(self, job_card):
+        """Extract job information from a LinkedIn job card"""
+        try:
+            job_info = {}
+            
+            # Extract job title
+            title_selectors = [
+                ".//h3[contains(@class, 'job-title')]",
+                ".//h3[contains(@class, 'title')]",
+                ".//a[contains(@class, 'job-title')]",
+                ".//span[contains(@class, 'job-title')]",
+                ".//div[contains(@class, 'job-title')]",
+                ".//h4[contains(@class, 'job-title')]"
+            ]
+            
+            for selector in title_selectors:
+                try:
+                    title_elem = job_card.find_element(By.XPATH, selector)
+                    if title_elem and title_elem.text.strip():
+                        job_info['title'] = title_elem.text.strip()
+                        break
+                except:
+                    continue
+            
+            # Extract company name
+            company_selectors = [
+                ".//h4[contains(@class, 'company')]",
+                ".//span[contains(@class, 'company')]",
+                ".//div[contains(@class, 'company')]",
+                ".//a[contains(@class, 'company')]",
+                ".//span[contains(@class, 'company-name')]"
+            ]
+            
+            for selector in company_selectors:
+                try:
+                    company_elem = job_card.find_element(By.XPATH, selector)
+                    if company_elem and company_elem.text.strip():
+                        job_info['company'] = company_elem.text.strip()
+                        break
+                except:
+                    continue
+            
+            # Extract location
+            location_selectors = [
+                ".//span[contains(@class, 'location')]",
+                ".//div[contains(@class, 'location')]",
+                ".//span[contains(@class, 'job-location')]",
+                ".//div[contains(@class, 'job-location')]"
+            ]
+            
+            for selector in location_selectors:
+                try:
+                    location_elem = job_card.find_element(By.XPATH, selector)
+                    if location_elem and location_elem.text.strip():
+                        job_info['location'] = location_elem.text.strip()
+                        break
+                except:
+                    continue
+            
+            # Extract job description (if available in card)
+            desc_selectors = [
+                ".//div[contains(@class, 'description')]",
+                ".//span[contains(@class, 'description')]",
+                ".//div[contains(@class, 'job-description')]",
+                ".//p[contains(@class, 'description')]"
+            ]
+            
+            for selector in desc_selectors:
+                try:
+                    desc_elem = job_card.find_element(By.XPATH, selector)
+                    if desc_elem and desc_elem.text.strip():
+                        job_info['description'] = desc_elem.text.strip()
+                        break
+                except:
+                    continue
+            
+            # If no description in card, try to click and read full description
+            if not job_info.get('description'):
+                job_info['description'] = self._read_linkedin_full_job_description(job_card)
+            
+            # Extract posting time
+            time_selectors = [
+                ".//span[contains(@class, 'time')]",
+                ".//span[contains(@class, 'posted')]",
+                ".//div[contains(@class, 'time')]",
+                ".//span[contains(@class, 'job-posted')]"
+            ]
+            
+            for selector in time_selectors:
+                try:
+                    time_elem = job_card.find_element(By.XPATH, selector)
+                    if time_elem and time_elem.text.strip():
+                        job_info['posted_time'] = time_elem.text.strip()
+                        break
+                except:
+                    continue
+            
+            # Extract job URL if available
+            try:
+                link_elem = job_card.find_element(By.XPATH, ".//a[contains(@href, '/jobs/')]")
+                if link_elem:
+                    job_info['url'] = link_elem.get_attribute('href')
+            except:
+                pass
+            
+            return job_info
+            
+        except Exception as e:
+            logger.warning(f"Error extracting job info: {e}")
+            return None
+
+    def _read_linkedin_full_job_description(self, job_card):
+        """Read the full job description by clicking on the job card"""
+        try:
+            # Try to click on the job card to open full description
+            try:
+                # Look for clickable elements within the job card
+                clickable_selectors = [
+                    ".//a[contains(@href, '/jobs/')]",
+                    ".//div[contains(@class, 'clickable')]",
+                    ".//div[contains(@class, 'job-card')]"
+                ]
+                
+                for selector in clickable_selectors:
+                    try:
+                        clickable_elem = job_card.find_element(By.XPATH, selector)
+                        if clickable_elem and clickable_elem.is_displayed():
+                            # Click to open job details
+                            self._human_like_click(clickable_elem)
+                            self._human_like_delay(3, 5)
+                            
+                            # Now try to read the full description
+                            description = self._extract_linkedin_full_description()
+                            
+                            # Go back to job listings
+                            self.driver.back()
+                            self._human_like_delay(2, 3)
+                            
+                            return description
+                    except:
+                        continue
+                        
+            except Exception as e:
+                logger.debug(f"Could not click job card: {e}")
+            
+            return "Description not available in card preview"
+            
+        except Exception as e:
+            logger.warning(f"Error reading full job description: {e}")
+            return "Error reading description"
+
+    def _extract_linkedin_full_description(self):
+        """Extract the full job description from the job details page"""
+        try:
+            # Wait for description to load
+            self._human_like_delay(2, 3)
+            
+            # Multiple selectors for full job description
+            desc_selectors = [
+                "//div[contains(@class, 'job-description')]",
+                "//div[contains(@class, 'description')]",
+                "//div[contains(@class, 'job-details')]",
+                "//div[contains(@class, 'job-content')]",
+                "//div[contains(@class, 'job-summary')]",
+                "//div[contains(@class, 'job-requirements')]",
+                "//div[contains(@class, 'job-qualifications')]",
+                "//div[contains(@class, 'show-more-less-html')]",
+                "//div[contains(@class, 'jobs-description')]",
+                "//div[contains(@class, 'jobs-box__html-content')]"
+            ]
+            
+            for selector in desc_selectors:
+                try:
+                    desc_elem = self.driver.find_element(By.XPATH, selector)
+                    if desc_elem and desc_elem.text.strip():
+                        description = desc_elem.text.strip()
+                        # Limit description length to avoid overwhelming
+                        if len(description) > 2000:
+                            description = description[:2000] + "..."
+                        return description
+                except:
+                    continue
+            
+            return "Full description not found"
+            
+        except Exception as e:
+            logger.warning(f"Error extracting full description: {e}")
+            return "Error extracting description"
 
     def _wait_for_linkedin_page_ready(self) -> bool:
         """Wait for LinkedIn page to be fully ready after login"""
@@ -2296,59 +2573,121 @@ class AutoJobApplierGUI:
             self.status_var.set("Browser opening failed")
     
     def update_job_list(self, jobs):
-        """Update the job listbox with found jobs"""
-        self.jobs_found = jobs
+        """Update the job list display with collected job information"""
         self.job_listbox.delete(0, tk.END)
         
-        for i, job in enumerate(jobs):
-            display_text = f"{job['title']} at {job['company']}"
-            self.job_listbox.insert(tk.END, display_text)
-        
-        self.log_message(f"✅ Found {len(jobs)} jobs")
-        self.status_var.set(f"Found {len(jobs)} jobs")
-    
+        # Check if we have LinkedIn job descriptions
+        if hasattr(self.job_scraper, 'linkedin_job_descriptions') and self.job_scraper.linkedin_job_descriptions:
+            # Display LinkedIn jobs with descriptions
+            for i, job in enumerate(self.job_scraper.linkedin_job_descriptions):
+                title = job.get('title', 'Unknown Title')
+                company = job.get('company', 'Unknown Company')
+                location = job.get('location', 'Unknown Location')
+                posted = job.get('posted_time', '')
+                
+                display_text = f"{i+1}. {title} at {company}"
+                if location:
+                    display_text += f" ({location})"
+                if posted:
+                    display_text += f" - {posted}"
+                
+                self.job_listbox.insert(tk.END, display_text)
+            
+            # Store the jobs for later analysis
+            self.current_jobs = self.job_scraper.linkedin_job_descriptions
+            self.log_message(f"Loaded {len(self.job_scraper.linkedin_job_descriptions)} LinkedIn jobs with descriptions")
+            
+        elif jobs:
+            # Fallback to regular job list
+            for i, job in enumerate(jobs):
+                title = job.get('title', 'Unknown Title')
+                company = job.get('company', 'Unknown Company')
+                location = job.get('location', 'Unknown Location')
+                
+                display_text = f"{i+1}. {title} at {company}"
+                if location:
+                    display_text += f" ({location})"
+                
+                self.job_listbox.insert(tk.END, display_text)
+            
+            self.current_jobs = jobs
+            self.log_message(f"Loaded {len(jobs)} jobs")
+        else:
+            self.log_message("No jobs found to display")
+
     def on_job_select(self, event):
-        """Handle job selection"""
+        """Handle job selection and display job details"""
         selection = self.job_listbox.curselection()
-        if selection:
-            index = selection[0]
-            if index < len(self.jobs_found):
-                self.current_job = self.jobs_found[index]
-                self.log_message(f"📋 Selected: {self.current_job['title']}")
-    
+        if not selection:
+            return
+        
+        index = selection[0]
+        if hasattr(self, 'current_jobs') and self.current_jobs and index < len(self.current_jobs):
+            job = self.current_jobs[index]
+            
+            # Display job details in the text area
+            details_text = f"Job Details:\n{'='*50}\n"
+            details_text += f"Title: {job.get('title', 'Unknown')}\n"
+            details_text += f"Company: {job.get('company', 'Unknown')}\n"
+            details_text += f"Location: {job.get('location', 'Unknown')}\n"
+            details_text += f"Posted: {job.get('posted_time', 'Unknown')}\n"
+            details_text += f"URL: {job.get('url', 'Not available')}\n"
+            details_text += f"\nDescription:\n{'-'*30}\n"
+            details_text += job.get('description', 'No description available')
+            
+            self.job_details_text.delete(1.0, tk.END)
+            self.job_details_text.insert(1.0, details_text)
+            
+            # Enable analysis buttons
+            self.analyze_button.config(state=tk.NORMAL)
+            self.cover_letter_button.config(state=tk.NORMAL)
+            
+            self.log_message(f"Selected job: {job.get('title', 'Unknown')}")
+
     def analyze_current_job(self):
-        """Analyze the currently selected job"""
-        if not self.current_job:
-            messagebox.showerror("Error", "Please select a job first")
+        """Analyze the currently selected job using AI"""
+        selection = self.job_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("No Job Selected", "Please select a job to analyze.")
             return
         
-        if not self.resume_data:
-            messagebox.showerror("Error", "Please load a resume first")
+        index = selection[0]
+        if not hasattr(self, 'current_jobs') or not self.current_jobs or index >= len(self.current_jobs):
+            messagebox.showwarning("No Job Data", "No job data available for analysis.")
             return
         
-        try:
-            self.status_var.set("Analyzing job...")
-            self.log_message(f"🤖 Analyzing job: {self.current_job['title']}")
-            
-            # Get job description
-            job_description = self.job_scraper.get_job_description(self.current_job['url'])
-            
-            # Analyze with AI
-            def analyze_thread():
-                try:
-                    analysis = self.ollama_manager.analyze_job_compatibility(
-                        job_description, self.resume_data['text']
-                    )
-                    self.root.after(0, self.display_analysis, analysis)
-                except Exception as e:
-                    self.root.after(0, lambda: self.log_message(f"❌ Analysis error: {str(e)}"))
-            
-            threading.Thread(target=analyze_thread, daemon=True).start()
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to analyze job: {str(e)}")
-            self.status_var.set("Analysis failed")
-    
+        job = self.current_jobs[index]
+        job_description = job.get('description', '')
+        
+        if not job_description or job_description == "No description available":
+            messagebox.showwarning("No Description", "This job has no description available for analysis.")
+            return
+        
+        # Check if resume is loaded
+        if not hasattr(self, 'resume_text') or not self.resume_text:
+            messagebox.showwarning("No Resume", "Please load a resume first to analyze job compatibility.")
+            return
+        
+        self.log_message("Starting AI job analysis...")
+        
+        def analyze_thread():
+            try:
+                # Use Ollama to analyze job compatibility
+                analysis = self.ollama_manager.analyze_job_compatibility(job_description, self.resume_text)
+                
+                if analysis:
+                    # Update GUI in main thread
+                    self.root.after(0, lambda: self.display_analysis(analysis))
+                    self.root.after(0, lambda: self.log_message("Job analysis completed successfully!"))
+                else:
+                    self.root.after(0, lambda: self.log_message("Failed to analyze job. Please check Ollama connection."))
+                    
+            except Exception as e:
+                self.root.after(0, lambda: self.log_message(f"Analysis error: {str(e)}"))
+        
+        # Run analysis in separate thread
+        threading.Thread(target=analyze_thread, daemon=True).start()
+
     def display_analysis(self, analysis):
         """Display job analysis results"""
         self.analysis_text.delete(1.0, tk.END)
@@ -2379,38 +2718,52 @@ REASONING:
         self.status_var.set("Analysis complete")
     
     def generate_cover_letter(self):
-        """Generate cover letter for current job"""
-        if not self.current_job:
-            messagebox.showerror("Error", "Please select a job first")
+        """Generate a cover letter for the currently selected job"""
+        selection = self.job_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("No Job Selected", "Please select a job to generate a cover letter for.")
             return
         
-        if not self.resume_data:
-            messagebox.showerror("Error", "Please load a resume first")
+        index = selection[0]
+        if not hasattr(self, 'current_jobs') or not self.current_jobs or index >= len(self.current_jobs):
+            messagebox.showwarning("No Job Data", "No job data available for cover letter generation.")
             return
         
-        try:
-            self.status_var.set("Generating cover letter...")
-            self.log_message(f"✍️ Generating cover letter for: {self.current_job['title']}")
-            
-            # Get job description
-            job_description = self.job_scraper.get_job_description(self.current_job['url'])
-            
-            # Generate cover letter
-            def generate_thread():
-                try:
-                    cover_letter = self.ollama_manager.generate_cover_letter(
-                        job_description, self.resume_data['text'], self.current_job['company']
-                    )
-                    self.root.after(0, self.display_cover_letter, cover_letter)
-                except Exception as e:
-                    self.root.after(0, lambda: self.log_message(f"❌ Cover letter error: {str(e)}"))
-            
-            threading.Thread(target=generate_thread, daemon=True).start()
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate cover letter: {str(e)}")
-            self.status_var.set("Cover letter failed")
-    
+        job = self.current_jobs[index]
+        job_description = job.get('description', '')
+        company_name = job.get('company', '')
+        
+        if not job_description or job_description == "No description available":
+            messagebox.showwarning("No Description", "This job has no description available for cover letter generation.")
+            return
+        
+        # Check if resume is loaded
+        if not hasattr(self, 'resume_text') or not self.resume_text:
+            messagebox.showwarning("No Resume", "Please load a resume first to generate a cover letter.")
+            return
+        
+        self.log_message("Generating AI-powered cover letter...")
+        
+        def cover_letter_thread():
+            try:
+                # Use Ollama to generate cover letter
+                cover_letter = self.ollama_manager.generate_cover_letter(
+                    job_description, self.resume_text, company_name
+                )
+                
+                if cover_letter:
+                    # Update GUI in main thread
+                    self.root.after(0, lambda: self.display_cover_letter(cover_letter))
+                    self.root.after(0, lambda: self.log_message("Cover letter generated successfully!"))
+                else:
+                    self.root.after(0, lambda: self.log_message("Failed to generate cover letter. Please check Ollama connection."))
+                    
+            except Exception as e:
+                self.root.after(0, lambda: self.log_message(f"Cover letter generation error: {str(e)}"))
+        
+        # Run cover letter generation in separate thread
+        threading.Thread(target=cover_letter_thread, daemon=True).start()
+
     def display_cover_letter(self, cover_letter):
         """Display generated cover letter"""
         self.analysis_text.delete(1.0, tk.END)
