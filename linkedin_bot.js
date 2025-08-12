@@ -57,12 +57,19 @@ async function linkedinLogin(page, email, password) {
         
         await new Promise(resolve => setTimeout(resolve, 5000));
         const currentUrl = page.url();
+        console.log("[INFO] Current URL after login:", currentUrl);
         
-        if (currentUrl.includes('feed') || currentUrl.includes('mynetwork')) {
+        // Check for various successful login indicators
+        if (currentUrl.includes('feed') || 
+            currentUrl.includes('mynetwork') || 
+            currentUrl.includes('messaging') ||
+            currentUrl.includes('profile') ||
+            currentUrl.includes('jobs') ||
+            !currentUrl.includes('login')) {
             console.log("[SUCCESS] LinkedIn login successful!");
             return true;
         } else {
-            console.log("[ERROR] Login may have failed");
+            console.log("[ERROR] Login may have failed, current URL:", currentUrl);
             return false;
         }
         
@@ -75,17 +82,104 @@ async function linkedinLogin(page, email, password) {
 async function navigateToJobs(page, keywords, location) {
     try {
         console.log("[INFO] Navigating to LinkedIn jobs...");
+        
+        // Wait for any security checkpoints to complete
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Navigate to jobs page
         await page.goto('https://www.linkedin.com/jobs/', { waitUntil: 'networkidle2' });
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Debug: Log the page content to see what's available
+        console.log("[DEBUG] Page title:", await page.title());
+        console.log("[DEBUG] Current URL:", page.url());
+        
+        // Wait a bit more for dynamic content to load
         await new Promise(resolve => setTimeout(resolve, 3000));
         
-        const searchInput = await page.waitForSelector('input[placeholder*="Search"]', { timeout: 10000 });
+        // Try multiple search input selectors
+        let searchInput = null;
+        const searchSelectors = [
+            'input[placeholder*="Search"]',
+            'input[placeholder*="Search jobs"]',
+            'input[name="keywords"]',
+            'input[data-test="search-input"]'
+        ];
+        
+        for (const selector of searchSelectors) {
+            try {
+                searchInput = await page.waitForSelector(selector, { timeout: 5000 });
+                if (searchInput) {
+                    console.log(`[INFO] Found search input with selector: ${selector}`);
+                    break;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (!searchInput) {
+            throw new Error("Could not find search input field");
+        }
+        
+        await searchInput.click();
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await searchInput.type(keywords, { delay: 100 });
+        console.log("[INFO] Search keywords entered");
         
-        const locationInput = await page.waitForSelector('input[placeholder*="City"]', { timeout: 10000 });
-        await locationInput.type(location, { timeout: 10000 });
+        // Try multiple location input selectors
+        let locationInput = null;
+        const locationSelectors = [
+            'input[placeholder*="City"]',
+            'input[placeholder*="Location"]',
+            'input[placeholder*="Where"]',
+            'input[name="location"]'
+        ];
         
-        const searchButton = await page.waitForSelector('button:contains("Search")', { timeout: 10000 });
-        await searchButton.click();
+        for (const selector of locationSelectors) {
+            try {
+                locationInput = await page.waitForSelector(selector, { timeout: 5000 });
+                if (locationInput) {
+                    console.log(`[INFO] Found search input with selector: ${selector}`);
+                    break;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (locationInput) {
+            await locationInput.click();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await locationInput.type(location, { delay: 100 });
+            console.log("[INFO] Location entered");
+        }
+        
+        // Try multiple search button selectors
+        let searchButton = null;
+        const buttonSelectors = [
+            'button:contains("Search")',
+            'button[type="submit"]',
+            'button.search',
+            'button[data-test="search-button"]'
+        ];
+        
+        for (const selector of buttonSelectors) {
+            try {
+                searchButton = await page.waitForSelector(selector, { timeout: 5000 });
+                if (searchButton) {
+                    console.log(`[INFO] Found search button with selector: ${selector}`);
+                    break;
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (searchButton) {
+            await searchButton.click();
+            console.log("[INFO] Search button clicked");
+        }
         
         await new Promise(resolve => setTimeout(resolve, 5000));
         console.log("[SUCCESS] Navigated to jobs with search");
