@@ -1,0 +1,26 @@
+{
+  "name": "web-ui-main",
+  "version": "1.0.0",
+  "description": "**AI-Powered LinkedIn Job Application Automation with Ollama Integration**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Maniredii/web-main-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Maniredii/web-main-/issues"
+  },
+  "homepage": "https://github.com/Maniredii/web-main-#readme",
+  "dependencies": {
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-anonymize-ua": "^2.4.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "random-useragent": "^0.5.0"
+  }
+}
