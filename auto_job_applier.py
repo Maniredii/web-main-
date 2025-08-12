@@ -454,6 +454,20 @@ class JobScraper:
             
             options = uc.ChromeOptions()
             
+            # COMPLETE BROWSER CLEANUP - Clear all data before starting
+            options.add_argument("--incognito")  # Start in incognito mode
+            options.add_argument("--disable-application-cache")
+            options.add_argument("--disable-cache")
+            options.add_argument("--disable-offline-load-stale-cache")
+            options.add_argument("--disk-cache-size=0")
+            options.add_argument("--media-cache-size=0")
+            options.add_argument("--disable-background-networking")
+            options.add_argument("--disable-sync")
+            options.add_argument("--disable-translate")
+            options.add_argument("--disable-default-apps")
+            options.add_argument("--disable-extensions-file-access-check")
+            options.add_argument("--disable-extensions-http-throttling")
+            
             # Window size randomization (mimics human behavior)
             window_width = random.randint(1200, 1920)
             window_height = random.randint(800, 1080)
@@ -496,6 +510,20 @@ class JobScraper:
             
             # Fallback to standard ChromeDriver with enhanced stealth
             chrome_options = Options()
+            
+            # COMPLETE BROWSER CLEANUP - Clear all data before starting
+            chrome_options.add_argument("--incognito")  # Start in incognito mode
+            chrome_options.add_argument("--disable-application-cache")
+            chrome_options.add_argument("--disable-cache")
+            chrome_options.add_argument("--disable-offline-load-stale-cache")
+            chrome_options.add_argument("--disk-cache-size=0")
+            chrome_options.add_argument("--media-cache-size=0")
+            chrome_options.add_argument("--disable-background-networking")
+            chrome_options.add_argument("--disable-sync")
+            chrome_options.add_argument("--disable-translate")
+            chrome_options.add_argument("--disable-default-apps")
+            chrome_options.add_argument("--disable-extensions-file-access-check")
+            chrome_options.add_argument("--disable-extensions-http-throttling")
             
             # Window size randomization
             window_width = random.randint(1200, 1920)
@@ -544,7 +572,232 @@ class JobScraper:
         # Advanced stealth measures
         self._apply_advanced_stealth_scripts(driver)
         
+        # Additional stealth measures
+        self._apply_human_behavior_scripts(driver)
+        
+        # COMPLETE BROWSER CLEANUP - Clear all data
+        self._complete_browser_cleanup(driver)
+        
         return driver
+
+    def _apply_human_behavior_scripts(self, driver):
+        """Apply scripts to make the browser behave more like a human"""
+        try:
+            # Randomize navigator properties
+            human_scripts = [
+                # Randomize screen resolution
+                "Object.defineProperty(screen, 'width', {get: () => " + str(random.randint(1366, 1920)) + "});",
+                "Object.defineProperty(screen, 'height', {get: () => " + str(random.randint(768, 1080)) + "});",
+                
+                # Randomize timezone
+                "Object.defineProperty(Intl, 'DateTimeFormat', {get: () => function() { return {resolvedOptions: () => ({timeZone: '" + random.choice(['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris']) + "'})} } });",
+                
+                # Randomize language
+                "Object.defineProperty(navigator, 'languages', {get: () => ['" + random.choice(['en-US', 'en-GB', 'en-CA']) + "']});",
+                
+                # Randomize platform
+                "Object.defineProperty(navigator, 'platform', {get: () => '" + random.choice(['Win32', 'MacIntel', 'Linux x86_64']) + "'});",
+                
+                # Randomize hardware concurrency
+                "Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => " + str(random.choice([4, 6, 8, 12, 16])) + "});",
+                
+                # Randomize device memory
+                "Object.defineProperty(navigator, 'deviceMemory', {get: () => " + str(random.choice([4, 8, 16, 32])) + "});"
+            ]
+            
+            for script in human_scripts:
+                try:
+                    driver.execute_script(script)
+                except:
+                    continue
+            
+            logger.info("Applied human behavior scripts successfully")
+            
+        except Exception as e:
+            logger.warning(f"Error applying human behavior scripts: {e}")
+
+    def _setup_session_persistence(self, driver):
+        """Setup session persistence to maintain login state"""
+        try:
+            # Load existing cookies if available
+            if os.path.exists("linkedin_cookies.json"):
+                logger.info("Loading existing LinkedIn cookies for session persistence")
+                try:
+                    with open("linkedin_cookies.json", "r") as f:
+                        cookies = json.load(f)
+                    
+                    # Navigate to LinkedIn domain first
+                    driver.get("https://www.linkedin.com")
+                    self._human_like_delay(2, 3)
+                    
+                    # Add cookies
+                    for cookie in cookies:
+                        try:
+                            driver.add_cookie(cookie)
+                        except Exception as e:
+                            logger.debug(f"Failed to add cookie: {e}")
+                    
+                    logger.info("LinkedIn cookies loaded successfully")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to load cookies: {e}")
+            
+        except Exception as e:
+            logger.warning(f"Error setting up session persistence: {e}")
+
+    def _complete_browser_cleanup(self, driver):
+        """Complete browser cleanup to prevent detection"""
+        try:
+            logger.info("Performing complete browser cleanup...")
+            
+            # Clear all browser data
+            driver.execute_script("""
+                // Clear localStorage
+                if (window.localStorage) {
+                    window.localStorage.clear();
+                }
+                
+                // Clear sessionStorage
+                if (window.sessionStorage) {
+                    window.sessionStorage.clear();
+                }
+                
+                // Clear IndexedDB
+                if (window.indexedDB) {
+                    window.indexedDB.deleteDatabase('_all_');
+                }
+                
+                // Clear cookies (JavaScript accessible)
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                // Clear cache storage
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) caches.delete(name);
+                    });
+                }
+                
+                // Clear service worker registrations
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for(let registration of registrations) {
+                            registration.unregister();
+                        }
+                    });
+                }
+                
+                // Clear web SQL databases
+                if (window.openDatabase) {
+                    // Clear any open databases
+                }
+                
+                // Clear application cache
+                if (window.applicationCache) {
+                    window.applicationCache.clear();
+                }
+                
+                // Clear any remaining data
+                if (window.clearAllData) {
+                    window.clearAllData();
+                }
+            """)
+            
+            # Clear browser cache and cookies via Selenium
+            try:
+                driver.delete_all_cookies()
+                logger.info("All cookies cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing cookies: {e}")
+            
+            # Clear browser cache
+            try:
+                driver.execute_script("window.performance.memory.usedJSHeapSize = 0;")
+                logger.info("Browser memory cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing memory: {e}")
+            
+            # Clear any stored passwords or form data
+            try:
+                driver.execute_script("""
+                    // Clear form data
+                    var forms = document.getElementsByTagName('form');
+                    for (var i = 0; i < forms.length; i++) {
+                        forms[i].reset();
+                    }
+                    
+                    // Clear input fields
+                    var inputs = document.getElementsByTagName('input');
+                    for (var i = 0; i < inputs.length; i++) {
+                        inputs[i].value = '';
+                    }
+                    
+                    // Clear textarea fields
+                    var textareas = document.getElementsByTagName('textarea');
+                    for (var i = 0; i < textareas.length; i++) {
+                        textareas[i].value = '';
+                    }
+                """)
+                logger.info("Form data cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing form data: {e}")
+            
+            logger.info("Complete browser cleanup finished")
+            
+        except Exception as e:
+            logger.warning(f"Error during browser cleanup: {e}")
+
+    def _clear_remaining_files(self):
+        """Clear any remaining files that might contain tracking data"""
+        try:
+            logger.info("Clearing remaining files...")
+            
+            # List of files to remove
+            files_to_remove = [
+                "linkedin_cookies.json",
+                "glassdoor_cookies.json",
+                "browser_data.json",
+                "session_data.json",
+                "automation_log.txt",
+                "debug_screenshot.png",
+                "linkedin_email_field_not_found.png",
+                "linkedin_password_field_not_found.png",
+                "linkedin_signin_button_not_found.png",
+                "linkedin_captcha_detected.png",
+                "linkedin_login_error.png"
+            ]
+            
+            # Remove each file if it exists
+            for filename in files_to_remove:
+                try:
+                    if os.path.exists(filename):
+                        os.remove(filename)
+                        logger.debug(f"Removed file: {filename}")
+                except Exception as e:
+                    logger.debug(f"Could not remove {filename}: {e}")
+            
+            # Clear any temporary directories
+            temp_dirs = [
+                "temp",
+                "cache",
+                "logs",
+                "screenshots"
+            ]
+            
+            for dir_name in temp_dirs:
+                try:
+                    if os.path.exists(dir_name):
+                        import shutil
+                        shutil.rmtree(dir_name)
+                        logger.debug(f"Removed directory: {dir_name}")
+                except Exception as e:
+                    logger.debug(f"Could not remove directory {dir_name}: {e}")
+            
+            logger.info("Remaining files cleared")
+            
+        except Exception as e:
+            logger.warning(f"Error clearing remaining files: {e}")
     
     def _apply_advanced_stealth_scripts(self, driver):
         """Apply advanced stealth scripts to mask automation"""
@@ -1228,11 +1481,33 @@ class JobScraper:
                     # Save cookies for future use
                     self._save_linkedin_cookies()
                     
-                    # Navigate to job search
-                    search_url = self._build_linkedin_search_url(keywords, location)
-                    self.driver.get(search_url)
-                    self._human_like_delay(2, 3)
-                    logger.info(f"LinkedIn login successful and navigated to job search: {search_url}")
+                    # Navigate to job search with enhanced stealth and stability
+                    logger.info("Using stealth navigation to LinkedIn jobs...")
+                    
+                    # Approach 1: Navigate to main jobs page first
+                    self.driver.get("https://www.linkedin.com/jobs/")
+                    self._human_like_delay(3, 5)
+                    
+                    # Approach 2: Perform stealth search
+                    if not self._perform_stealth_linkedin_search(keywords, location):
+                        logger.warning("Stealth search failed, trying direct URL...")
+                        # Fallback: direct URL navigation
+                        search_url = self._build_linkedin_search_url(keywords, location)
+                        self.driver.get(search_url)
+                        self._human_like_delay(5, 8)
+                    
+                    # Verify we're on the jobs page and handle any redirects
+                    current_url = self.driver.current_url
+                    if "jobs" not in current_url.lower():
+                        logger.warning("Redirected away from jobs page, using advanced recovery...")
+                        if not self._advanced_linkedin_redirect_recovery(keywords, location):
+                            logger.error("Advanced redirect recovery failed")
+                            return False
+                    else:
+                        logger.info("Successfully navigated to LinkedIn jobs page")
+                    
+                    # Apply additional stealth measures to prevent further redirects
+                    self._apply_linkedin_page_stealth()
                     
                     # Now read job descriptions from the listings
                     if self._read_linkedin_job_descriptions():
@@ -1252,19 +1527,464 @@ class JobScraper:
             logger.error(f"Error in LinkedIn login and search: {e}")
             return False
 
+    def _perform_stealth_linkedin_search(self, keywords: str, location: str) -> bool:
+        """Perform LinkedIn job search with advanced stealth techniques"""
+        try:
+            logger.info("Performing stealth LinkedIn job search...")
+            
+            # Wait for page to be fully loaded
+            self._human_like_delay(3, 5)
+            
+            # Simulate human-like behavior before searching
+            self._simulate_human_browsing_behavior()
+            
+            # Look for search input fields with multiple selectors
+            search_input = self._find_linkedin_search_input_stealth()
+            if not search_input:
+                logger.warning("Could not find LinkedIn search input with stealth method")
+                return False
+            
+            # Human-like interaction with search field
+            self._human_like_interact_with_element(search_input, keywords)
+            
+            # Look for location input
+            location_input = self._find_linkedin_location_input_stealth()
+            if location_input:
+                self._human_like_interact_with_element(location_input, location)
+            
+            # Find and click search button with stealth
+            search_button = self._find_linkedin_search_button_stealth()
+            if search_button:
+                self._stealth_click_element(search_button)
+                self._human_like_delay(5, 8)  # Wait for search results
+                logger.info("Stealth LinkedIn job search performed successfully")
+                return True
+            else:
+                logger.warning("Could not find LinkedIn search button with stealth method")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error performing stealth LinkedIn job search: {e}")
+            return False
+
+    def _simulate_human_browsing_behavior(self):
+        """Simulate human-like browsing behavior to avoid detection"""
+        try:
+            # Random mouse movements (simulated)
+            self._human_like_delay(1, 3)
+            
+            # Random scrolling
+            scroll_amount = random.randint(100, 300)
+            self.driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+            self._human_like_delay(1, 2)
+            
+            # Random scroll back
+            self.driver.execute_script(f"window.scrollBy(0, -{scroll_amount//2});")
+            self._human_like_delay(1, 2)
+            
+            logger.debug("Applied human browsing behavior simulation")
+            
+        except Exception as e:
+            logger.debug(f"Error simulating browsing behavior: {e}")
+
+    def _find_linkedin_search_input_stealth(self):
+        """Find LinkedIn search input with enhanced stealth selectors"""
+        try:
+            # Multiple stealth selectors for search input
+            search_selectors = [
+                "//input[contains(@placeholder, 'Search jobs')]",
+                "//input[contains(@placeholder, 'Search by title')]",
+                "//input[contains(@placeholder, 'Search')]",
+                "//input[contains(@name, 'keywords')]",
+                "//input[contains(@id, 'keywords')]",
+                "//input[contains(@class, 'search')]",
+                "//input[contains(@aria-label, 'Search')]",
+                "//input[contains(@data-test-id, 'search')]",
+                "//input[@type='text' and contains(@class, 'input')]",
+                "//div[contains(@class, 'search')]//input",
+                "//form[contains(@class, 'search')]//input"
+            ]
+            
+            for selector in search_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.debug(f"Found search input using selector: {selector}")
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding search input with stealth: {e}")
+            return None
+
+    def _find_linkedin_location_input_stealth(self):
+        """Find LinkedIn location input with enhanced stealth selectors"""
+        try:
+            # Multiple stealth selectors for location input
+            location_selectors = [
+                "//input[contains(@placeholder, 'City')]",
+                "//input[contains(@placeholder, 'Location')]",
+                "//input[contains(@placeholder, 'Where')]",
+                "//input[contains(@name, 'location')]",
+                "//input[contains(@id, 'location')]",
+                "//input[contains(@aria-label, 'Location')]",
+                "//input[contains(@data-test-id, 'location')]",
+                "//div[contains(@class, 'location')]//input",
+                "//form[contains(@class, 'search')]//input[2]"
+            ]
+            
+            for selector in location_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.debug(f"Found location input using selector: {selector}")
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding location input with stealth: {e}")
+            return None
+
+    def _find_linkedin_search_button_stealth(self):
+        """Find LinkedIn search button with enhanced stealth selectors"""
+        try:
+            # Multiple stealth selectors for search button
+            button_selectors = [
+                "//button[contains(text(), 'Search')]",
+                "//button[contains(text(), 'Find jobs')]",
+                "//button[contains(@type, 'submit')]",
+                "//button[contains(@class, 'search')]",
+                "//button[contains(@aria-label, 'Search')]",
+                "//button[contains(@data-test-id, 'search')]",
+                "//input[contains(@type, 'submit')]",
+                "//button[contains(@class, 'btn') and contains(@class, 'search')]",
+                "//div[contains(@class, 'search')]//button",
+                "//form[contains(@class, 'search')]//button"
+            ]
+            
+            for selector in button_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.debug(f"Found search button using selector: {selector}")
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding search button with stealth: {e}")
+            return None
+
+    def _human_like_interact_with_element(self, element, text):
+        """Interact with an element in a human-like way"""
+        try:
+            # Clear the field
+            element.clear()
+            self._human_like_delay(0.5, 1)
+            
+            # Click on the field
+            element.click()
+            self._human_like_delay(0.5, 1)
+            
+            # Type text with human-like delays
+            self._human_like_typing(element, text)
+            
+            # Small delay after typing
+            self._human_like_delay(1, 2)
+            
+        except Exception as e:
+            logger.warning(f"Error in human-like interaction: {e}")
+
+    def _stealth_click_element(self, element):
+        """Click an element with stealth techniques"""
+        try:
+            # Scroll element into view
+            self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+            self._human_like_delay(0.5, 1)
+            
+            # Human-like click
+            self._human_like_click(element)
+            
+        except Exception as e:
+            logger.warning(f"Error in stealth click: {e}")
+
+    def _advanced_linkedin_redirect_recovery(self, keywords: str, location: str) -> bool:
+        """Advanced recovery from LinkedIn redirects"""
+        try:
+            logger.info("Attempting advanced LinkedIn redirect recovery...")
+            
+            # Try multiple recovery approaches
+            recovery_methods = [
+                lambda: self._recovery_method_1(keywords, location),
+                lambda: self._recovery_method_2(keywords, location),
+                lambda: self._recovery_method_3(keywords, location)
+            ]
+            
+            for i, method in enumerate(recovery_methods):
+                try:
+                    logger.info(f"Trying recovery method {i+1}...")
+                    if method():
+                        logger.info(f"Recovery method {i+1} successful")
+                        return True
+                except Exception as e:
+                    logger.warning(f"Recovery method {i+1} failed: {e}")
+                    continue
+            
+            logger.error("All recovery methods failed")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error in advanced redirect recovery: {e}")
+            return False
+
+    def _recovery_method_1(self, keywords: str, location: str) -> bool:
+        """Recovery method 1: Direct jobs navigation with stealth"""
+        try:
+            # Navigate to jobs page directly
+            self.driver.get("https://www.linkedin.com/jobs/")
+            self._human_like_delay(5, 8)
+            
+            # Apply stealth measures
+            self._apply_linkedin_page_stealth()
+            
+            # Perform search
+            return self._perform_stealth_linkedin_search(keywords, location)
+            
+        except Exception as e:
+            logger.warning(f"Recovery method 1 failed: {e}")
+            return False
+
+    def _recovery_method_2(self, keywords: str, location: str) -> bool:
+        """Recovery method 2: Use browser back and retry"""
+        try:
+            # Go back in browser
+            self.driver.back()
+            self._human_like_delay(3, 5)
+            
+            # Try to navigate to jobs again
+            self.driver.get("https://www.linkedin.com/jobs/")
+            self._human_like_delay(5, 8)
+            
+            # Apply stealth measures
+            self._apply_linkedin_page_stealth()
+            
+            # Perform search
+            return self._perform_stealth_linkedin_search(keywords, location)
+            
+        except Exception as e:
+            logger.warning(f"Recovery method 2 failed: {e}")
+            return False
+
+    def _recovery_method_3(self, keywords: str, location: str) -> bool:
+        """Recovery method 3: Fresh navigation with enhanced stealth"""
+        try:
+            # Navigate to LinkedIn home first
+            self.driver.get("https://www.linkedin.com")
+            self._human_like_delay(3, 5)
+            
+            # Apply stealth measures
+            self._apply_linkedin_page_stealth()
+            
+            # Navigate to jobs
+            self.driver.get("https://www.linkedin.com/jobs/")
+            self._human_like_delay(5, 8)
+            
+            # Apply stealth measures again
+            self._apply_linkedin_page_stealth()
+            
+            # Perform search
+            return self._perform_stealth_linkedin_search(keywords, location)
+            
+        except Exception as e:
+            logger.warning(f"Recovery method 3 failed: {e}")
+            return False
+
+    def _apply_linkedin_page_stealth(self):
+        """Apply additional stealth measures to LinkedIn page"""
+        try:
+            # Inject stealth scripts
+            stealth_scripts = [
+                # Hide automation indicators
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});",
+                
+                # Randomize viewport
+                f"Object.defineProperty(screen, 'availWidth', {{get: () => {random.randint(1200, 1920)}}});",
+                f"Object.defineProperty(screen, 'availHeight', {{get: () => {random.randint(800, 1080)}}});",
+                
+                # Randomize color depth
+                f"Object.defineProperty(screen, 'colorDepth', {{get: () => {random.choice([24, 32])}}});",
+                
+                # Randomize pixel ratio
+                f"Object.defineProperty(window, 'devicePixelRatio', {{get: () => {random.choice([1, 1.25, 1.5, 2])}}});"
+            ]
+            
+            for script in stealth_scripts:
+                try:
+                    self.driver.execute_script(script)
+                except:
+                    continue
+            
+            logger.debug("Applied LinkedIn page stealth measures")
+            
+        except Exception as e:
+            logger.debug(f"Error applying page stealth: {e}")
+
+    def _perform_linkedin_job_search(self, keywords: str, location: str) -> bool:
+        """Perform the actual job search on LinkedIn"""
+        try:
+            logger.info("Performing LinkedIn job search...")
+            
+            # Look for search input fields
+            search_input = self._find_linkedin_search_input()
+            if not search_input:
+                logger.error("Could not find LinkedIn search input")
+                return False
+            
+            # Clear and fill search input
+            search_input.clear()
+            self._human_like_delay(1, 2)
+            self._human_like_typing(search_input, keywords)
+            self._human_like_delay(2, 3)
+            
+            # Look for location input
+            location_input = self._find_linkedin_location_input()
+            if location_input:
+                location_input.clear()
+                self._human_like_delay(1, 2)
+                self._human_like_typing(location_input, location)
+                self._human_like_delay(2, 3)
+            
+            # Find and click search button
+            search_button = self._find_linkedin_search_button()
+            if search_button:
+                self._human_like_click(search_button)
+                self._human_like_delay(5, 8)  # Wait for search results
+                logger.info("LinkedIn job search performed successfully")
+                return True
+            else:
+                logger.error("Could not find LinkedIn search button")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error performing LinkedIn job search: {e}")
+            return False
+
+    def _find_linkedin_search_input(self):
+        """Find the LinkedIn job search input field"""
+        try:
+            search_selectors = [
+                "//input[contains(@placeholder, 'Search jobs')]",
+                "//input[contains(@placeholder, 'Search by title')]",
+                "//input[contains(@name, 'keywords')]",
+                "//input[contains(@id, 'keywords')]",
+                "//input[contains(@class, 'search')]"
+            ]
+            
+            for selector in search_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed():
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding search input: {e}")
+            return None
+
+    def _find_linkedin_location_input(self):
+        """Find the LinkedIn location input field"""
+        try:
+            location_selectors = [
+                "//input[contains(@placeholder, 'City')]",
+                "//input[contains(@placeholder, 'Location')]",
+                "//input[contains(@name, 'location')]",
+                "//input[contains(@id, 'location')]"
+            ]
+            
+            for selector in location_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed():
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding location input: {e}")
+            return None
+
+    def _find_linkedin_search_button(self):
+        """Find the LinkedIn search button"""
+        try:
+            button_selectors = [
+                "//button[contains(text(), 'Search')]",
+                "//button[contains(@type, 'submit')]",
+                "//button[contains(@class, 'search')]",
+                "//input[contains(@type, 'submit')]"
+            ]
+            
+            for selector in button_selectors:
+                try:
+                    element = self.driver.find_element(By.XPATH, selector)
+                    if element and element.is_displayed():
+                        return element
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding search button: {e}")
+            return None
+
     def _read_linkedin_job_descriptions(self) -> bool:
         """Read job descriptions from LinkedIn job listings"""
         try:
             logger.info("Starting to read LinkedIn job descriptions...")
             
-            # Wait for job listings to load
-            self._human_like_delay(3, 5)
+            # Wait for job listings to load and stabilize
+            self._human_like_delay(5, 8)
+            
+            # Check if we're still on the jobs page
+            current_url = self.driver.current_url
+            if "jobs" not in current_url.lower():
+                logger.warning("Redirected away from jobs page, attempting to return...")
+                # Try to navigate back to jobs
+                if not self._return_to_linkedin_jobs():
+                    logger.error("Failed to return to LinkedIn jobs page")
+                    return False
+            
+            # Wait for page to be stable and prevent redirects
+            if not self._wait_for_linkedin_jobs_page_stable():
+                logger.error("LinkedIn jobs page is not stable")
+                return False
             
             # Find all job listing cards
             job_cards = self._find_linkedin_job_cards()
             if not job_cards:
                 logger.warning("No job cards found on LinkedIn page")
-                return False
+                # Try refreshing the page
+                logger.info("Refreshing page to reload job listings...")
+                self.driver.refresh()
+                self._human_like_delay(5, 8)
+                job_cards = self._find_linkedin_job_cards()
+                
+                if not job_cards:
+                    logger.error("Still no job cards found after refresh")
+                    return False
             
             logger.info(f"Found {len(job_cards)} job cards, reading descriptions...")
             
@@ -1299,6 +2019,74 @@ class JobScraper:
                 
         except Exception as e:
             logger.error(f"Error reading LinkedIn job descriptions: {e}")
+            return False
+
+    def _return_to_linkedin_jobs(self) -> bool:
+        """Return to LinkedIn jobs page if redirected"""
+        try:
+            logger.info("Attempting to return to LinkedIn jobs page...")
+            
+            # Try multiple approaches to get back to jobs
+            approaches = [
+                # Approach 1: Navigate directly to jobs
+                lambda: self.driver.get("https://www.linkedin.com/jobs/"),
+                
+                # Approach 2: Click jobs navigation
+                lambda: self._click_jobs_navigation(),
+                
+                # Approach 3: Use browser back button
+                lambda: self.driver.back()
+            ]
+            
+            for i, approach in enumerate(approaches):
+                try:
+                    logger.info(f"Trying approach {i+1} to return to jobs...")
+                    approach()
+                    self._human_like_delay(3, 5)
+                    
+                    # Check if we're back on jobs page
+                    current_url = self.driver.current_url
+                    if "jobs" in current_url.lower():
+                        logger.info("Successfully returned to LinkedIn jobs page")
+                        return True
+                        
+                except Exception as e:
+                    logger.warning(f"Approach {i+1} failed: {e}")
+                    continue
+            
+            logger.error("All approaches to return to jobs page failed")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error returning to LinkedIn jobs: {e}")
+            return False
+
+    def _click_jobs_navigation(self) -> bool:
+        """Click on the jobs navigation link"""
+        try:
+            # Look for jobs navigation elements
+            jobs_selectors = [
+                "//a[contains(@href, '/jobs/')]",
+                "//a[contains(text(), 'Jobs')]",
+                "//nav//a[contains(@href, 'jobs')]",
+                "//header//a[contains(@href, 'jobs')]"
+            ]
+            
+            for selector in jobs_selectors:
+                try:
+                    jobs_link = self.driver.find_element(By.XPATH, selector)
+                    if jobs_link and jobs_link.is_displayed():
+                        logger.info("Found jobs navigation link, clicking...")
+                        self._human_like_click(jobs_link)
+                        return True
+                except:
+                    continue
+            
+            logger.warning("No jobs navigation link found")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error clicking jobs navigation: {e}")
             return False
 
     def _find_linkedin_job_cards(self):
@@ -1607,8 +2395,51 @@ class JobScraper:
             logger.debug(f"Error handling post-login challenges: {e}")
             return True
 
+    def _wait_for_linkedin_jobs_page_stable(self) -> bool:
+        """Wait for LinkedIn jobs page to be stable and prevent redirects"""
+        try:
+            logger.info("Waiting for LinkedIn jobs page to stabilize...")
+            
+            # Wait for initial page load
+            self._human_like_delay(5, 8)
+            
+            # Check URL multiple times to ensure it's stable
+            stable_count = 0
+            required_stable_count = 3
+            last_url = ""
+            
+            for i in range(10):  # Check for up to 10 seconds
+                current_url = self.driver.current_url
+                
+                if current_url == last_url:
+                    stable_count += 1
+                    if stable_count >= required_stable_count:
+                        logger.info("LinkedIn jobs page is stable")
+                        return True
+                else:
+                    stable_count = 0
+                    last_url = current_url
+                    logger.debug(f"URL changed to: {current_url}")
+                
+                self._human_like_delay(1, 2)
+                
+                # If we're redirected away from jobs, try to return
+                if "jobs" not in current_url.lower():
+                    logger.warning("Redirected away from jobs page during stabilization")
+                    if not self._return_to_linkedin_jobs():
+                        logger.error("Failed to return to jobs page during stabilization")
+                        return False
+                    stable_count = 0  # Reset stability counter
+            
+            logger.warning("LinkedIn jobs page did not stabilize within timeout")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error waiting for jobs page stability: {e}")
+            return False
+
     def _handle_linkedin_login(self, wait) -> bool:
-        """Handle LinkedIn login with enhanced human-like behavior"""
+        """Handle LinkedIn login with enhanced human-like behavior and dynamic selectors"""
         try:
             # Load credentials from file
             credentials = self._load_user_credentials()
@@ -1624,8 +2455,40 @@ class JobScraper:
                 logger.error("LinkedIn email or password missing from credentials")
                 return False
             
-            # Wait for page to fully load
-            self._human_like_delay(3, 6)
+            logger.info("User credentials loaded successfully")
+            
+            # Wait for login page to fully load and stabilize
+            logger.info("Waiting for LinkedIn login page to fully load...")
+            try:
+                # Wait for login page URL
+                wait.until(EC.url_contains("login"))
+                logger.info("LinkedIn login page URL confirmed")
+                
+                # Wait for page to be fully loaded
+                wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                logger.info("LinkedIn login page body loaded")
+                
+                # Wait for page to be interactive
+                wait.until(EC.element_to_be_clickable((By.TAG_NAME, "body")))
+                logger.info("LinkedIn login page is interactive")
+                
+            except Exception as e:
+                logger.warning(f"Login page load check failed: {e}")
+            
+            # Wait for page to stabilize and prevent race conditions
+            self._human_like_delay(5, 8)
+            
+            # Additional stability check - wait for any loading indicators to disappear
+            self._wait_for_linkedin_page_stable()
+            
+            # Handle any popups or overlays that might interfere with login
+            self._handle_linkedin_popups_and_overlays()
+            
+            # Apply stealth measures to prevent detection
+            self._apply_linkedin_page_stealth()
+            
+            # Clear any remaining browser data before login attempt
+            self._clear_browser_data_before_login()
             
             # Check for CAPTCHA or security challenges
             if self._detect_captcha_or_challenge():
@@ -1634,40 +2497,41 @@ class JobScraper:
                     self._take_debug_screenshot("linkedin_captcha_detected.png")
                     return False
             
-            # Step 1: Find and fill email field
-            email_field = self._find_linkedin_email_field(wait)
+            # Step 1: Find and fill email field with dynamic selectors
+            email_field = self._find_linkedin_email_field_dynamic()
             if not email_field:
-                logger.error("Could not find LinkedIn email field")
+                logger.error("Could not find LinkedIn email field with any selector")
                 self._take_debug_screenshot("linkedin_email_field_not_found.png")
                 return False
             
             # Human-like email entry
-            self._human_like_typing(email_field, email)
+            self._human_like_interact_with_element(email_field, email)
             logger.info("LinkedIn email entered with enhanced human-like typing")
             
-            # Step 2: Find and fill password field
-            password_field = self._find_linkedin_password_field(wait)
+            # Step 2: Find and fill password field with dynamic selectors
+            password_field = self._find_linkedin_password_field_dynamic()
             if not password_field:
-                logger.error("Could not find LinkedIn password field")
+                logger.error("Could not find LinkedIn password field with any selector")
                 self._take_debug_screenshot("linkedin_password_field_not_found.png")
                 return False
             
             # Human-like password entry
-            self._human_like_typing(password_field, password)
+            self._human_like_interact_with_element(password_field, password)
             logger.info("LinkedIn password entered with enhanced human-like typing")
             
-            # Step 3: Find and click sign in button
-            signin_button = self._find_linkedin_signin_button()
+            # Step 3: Find and click sign in button with dynamic selectors
+            signin_button = self._find_linkedin_signin_button_dynamic()
             if not signin_button:
-                logger.error("Could not find LinkedIn sign in button")
+                logger.error("Could not find LinkedIn sign in button with any selector")
                 self._take_debug_screenshot("linkedin_signin_button_not_found.png")
                 return False
             
-            self._human_like_click(signin_button)
+            # Click sign in button with stealth
+            self._stealth_click_element(signin_button)
             logger.info("Clicked LinkedIn sign in button with enhanced human-like behavior")
             
             # Step 4: Wait for login to complete
-            self._human_like_delay(4, 7)
+            self._human_like_delay(5, 8)
             
             # Check for error messages after login attempt
             if self._check_for_linkedin_error_messages():
@@ -1727,6 +2591,358 @@ class JobScraper:
         except Exception as e:
             logger.debug(f"Error finding LinkedIn email field: {e}")
             return None
+
+    def _find_linkedin_email_field_dynamic(self):
+        """Find LinkedIn email field using multiple dynamic selectors"""
+        try:
+            # Updated selectors for LinkedIn's current login page
+            email_selectors = [
+                # Primary selectors
+                (By.ID, "username"),
+                (By.NAME, "session_key"),
+                (By.NAME, "email"),
+                
+                # Alternative selectors
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.CSS_SELECTOR, "input[autocomplete='username']"),
+                (By.CSS_SELECTOR, "input[placeholder*='Email']"),
+                (By.CSS_SELECTOR, "input[placeholder*='email']"),
+                
+                # XPath selectors
+                (By.XPATH, "//input[@type='email']"),
+                (By.XPATH, "//input[contains(@placeholder, 'Email')]"),
+                (By.XPATH, "//input[contains(@placeholder, 'email')]"),
+                (By.XPATH, "//input[@name='session_key']"),
+                (By.XPATH, "//input[@name='email']"),
+                (By.XPATH, "//input[@id='username']"),
+                
+                # Form-based selectors
+                (By.XPATH, "//form//input[@type='email']"),
+                (By.XPATH, "//form//input[@name='session_key']"),
+                (By.XPATH, "//form//input[@name='email']"),
+                
+                # Label-based selectors
+                (By.XPATH, "//label[contains(text(), 'Email')]/following-sibling::input"),
+                (By.XPATH, "//label[contains(text(), 'email')]/following-sibling::input"),
+                (By.XPATH, "//label[contains(text(), 'Email')]/input"),
+                (By.XPATH, "//label[contains(text(), 'email')]/input")
+            ]
+            
+            # Try each selector with WebDriverWait
+            for by, selector in email_selectors:
+                try:
+                    logger.debug(f"Trying email selector: {by} = {selector}")
+                    element = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((by, selector))
+                    )
+                    
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.info(f"Found LinkedIn email field using: {by} = {selector}")
+                        return element
+                        
+                except Exception as e:
+                    logger.debug(f"Email selector failed: {by} = {selector}, error: {e}")
+                    continue
+            
+            logger.error("All email field selectors failed")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding LinkedIn email field: {e}")
+            return None
+
+    def _find_linkedin_password_field_dynamic(self):
+        """Find LinkedIn password field using multiple dynamic selectors"""
+        try:
+            # Updated selectors for LinkedIn's current login page
+            password_selectors = [
+                # Primary selectors
+                (By.ID, "password"),
+                (By.NAME, "session_password"),
+                (By.NAME, "password"),
+                
+                # Alternative selectors
+                (By.CSS_SELECTOR, "input[type='password']"),
+                (By.CSS_SELECTOR, "input[autocomplete='current-password']"),
+                (By.CSS_SELECTOR, "input[placeholder*='Password']"),
+                (By.CSS_SELECTOR, "input[placeholder*='password']"),
+                
+                # XPath selectors
+                (By.XPATH, "//input[@type='password']"),
+                (By.XPATH, "//input[contains(@placeholder, 'Password')]"),
+                (By.XPATH, "//input[contains(@placeholder, 'password')]"),
+                (By.XPATH, "//input[@name='session_password']"),
+                (By.XPATH, "//input[@name='password']"),
+                (By.XPATH, "//input[@id='password']"),
+                
+                # Form-based selectors
+                (By.XPATH, "//form//input[@type='password']"),
+                (By.XPATH, "//form//input[@name='session_password']"),
+                (By.XPATH, "//form//input[@name='password']"),
+                
+                # Label-based selectors
+                (By.XPATH, "//label[contains(text(), 'Password')]/following-sibling::input"),
+                (By.XPATH, "//label[contains(text(), 'password')]/following-sibling::input"),
+                (By.XPATH, "//label[contains(text(), 'Password')]/input"),
+                (By.XPATH, "//label[contains(text(), 'password')]/input")
+            ]
+            
+            # Try each selector with WebDriverWait
+            for by, selector in password_selectors:
+                try:
+                    logger.debug(f"Trying password selector: {by} = {selector}")
+                    element = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((by, selector))
+                    )
+                    
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.info(f"Found LinkedIn password field using: {by} = {selector}")
+                        return element
+                        
+                except Exception as e:
+                    logger.debug(f"Password selector failed: {by} = {selector}, error: {e}")
+                    continue
+            
+            logger.error("All password field selectors failed")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding LinkedIn password field: {e}")
+            return None
+
+    def _find_linkedin_signin_button_dynamic(self):
+        """Find LinkedIn sign in button using multiple dynamic selectors"""
+        try:
+            # Updated selectors for LinkedIn's current login page
+            button_selectors = [
+                # Primary selectors
+                (By.XPATH, "//button[@type='submit']"),
+                (By.XPATH, "//button[contains(text(), 'Sign in')]"),
+                (By.XPATH, "//button[contains(text(), 'Sign In')]"),
+                (By.XPATH, "//button[contains(text(), 'Signin')]"),
+                (By.XPATH, "//button[contains(text(), 'Login')]"),
+                (By.XPATH, "//button[contains(text(), 'Log in')]"),
+                
+                # Alternative selectors
+                (By.CSS_SELECTOR, "button[type='submit']"),
+                (By.CSS_SELECTOR, "button.btn-primary"),
+                (By.CSS_SELECTOR, "button.sign-in"),
+                (By.CSS_SELECTOR, "button.login"),
+                
+                # Form-based selectors
+                (By.XPATH, "//form//button[@type='submit']"),
+                (By.XPATH, "//form//button[contains(text(), 'Sign')]"),
+                (By.XPATH, "//form//button[contains(text(), 'Log')]"),
+                
+                # Input-based selectors (some forms use input type submit)
+                (By.XPATH, "//input[@type='submit']"),
+                (By.XPATH, "//input[@value='Sign in']"),
+                (By.XPATH, "//input[@value='Sign In']"),
+                (By.XPATH, "//input[@value='Login']"),
+                
+                # Generic button selectors
+                (By.XPATH, "//button[contains(@class, 'btn')]"),
+                (By.XPATH, "//button[contains(@class, 'button')]"),
+                (By.XPATH, "//button[contains(@class, 'submit')]"),
+                (By.XPATH, "//button[contains(@class, 'sign')]"),
+                (By.XPATH, "//button[contains(@class, 'login')]")
+            ]
+            
+            # Try each selector with WebDriverWait
+            for by, selector in button_selectors:
+                try:
+                    logger.debug(f"Trying signin button selector: {by} = {selector}")
+                    element = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((by, selector))
+                    )
+                    
+                    if element and element.is_displayed() and element.is_enabled():
+                        logger.info(f"Found LinkedIn signin button using: {by} = {selector}")
+                        return element
+                        
+                except Exception as e:
+                    logger.debug(f"Signin button selector failed: {by} = {selector}, error: {e}")
+                    continue
+            
+            logger.error("All signin button selectors failed")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding LinkedIn signin button: {e}")
+            return None
+
+    def _wait_for_linkedin_page_stable(self):
+        """Wait for LinkedIn page to be stable and ready for interaction"""
+        try:
+            logger.info("Waiting for LinkedIn page to stabilize...")
+            
+            # Wait for any loading indicators to disappear
+            loading_selectors = [
+                "//div[contains(@class, 'loading')]",
+                "//div[contains(@class, 'spinner')]",
+                "//div[contains(@class, 'loader')]",
+                "//div[contains(@class, 'progress')]",
+                "//div[contains(@class, 'wait')]",
+                "//div[contains(@class, 'busy')]",
+                "//div[contains(@class, 'processing')]",
+                "//div[contains(@class, 'initializing')]",
+                "//div[contains(@class, 'preparing')]",
+                "//div[contains(@class, 'setup')]"
+            ]
+            
+            # Wait for loading indicators to disappear
+            for selector in loading_selectors:
+                try:
+                    WebDriverWait(self.driver, 3).until_not(
+                        EC.presence_of_element_located((By.XPATH, selector))
+                    )
+                except:
+                    continue
+            
+            # Wait for page to be fully interactive
+            WebDriverWait(self.driver, 10).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
+            
+            # Additional wait for any JavaScript to finish loading
+            self._human_like_delay(2, 4)
+            
+            logger.info("LinkedIn page is stable and ready for interaction")
+            
+        except Exception as e:
+            logger.warning(f"Error waiting for page stability: {e}")
+
+    def _handle_linkedin_popups_and_overlays(self):
+        """Handle any popups or overlays that might interfere with LinkedIn login"""
+        try:
+            logger.info("Checking for LinkedIn popups and overlays...")
+            
+            # Common popup/overlay selectors
+            popup_selectors = [
+                # Cookie consent
+                "//button[contains(text(), 'Accept')]",
+                "//button[contains(text(), 'Accept All')]",
+                "//button[contains(text(), 'Allow')]",
+                "//button[contains(text(), 'Allow All')]",
+                "//button[contains(text(), 'Got it')]",
+                "//button[contains(text(), 'I understand')]",
+                "//button[contains(text(), 'Continue')]",
+                
+                # Location popups
+                "//button[contains(text(), 'Not now')]",
+                "//button[contains(text(), 'Skip')]",
+                "//button[contains(text(), 'Maybe later')]",
+                "//button[contains(text(), 'Remind me later')]",
+                
+                # Notification popups
+                "//button[contains(text(), 'Turn on')]",
+                "//button[contains(text(), 'Not now')]",
+                "//button[contains(text(), 'Skip')]",
+                
+                # Close buttons
+                "//button[contains(@aria-label, 'Close')]",
+                "//button[contains(@aria-label, 'Dismiss')]",
+                "//button[contains(@class, 'close')]",
+                "//button[contains(@class, 'dismiss')]",
+                "//span[contains(@class, 'close')]",
+                "//span[contains(@class, 'dismiss')]",
+                
+                # Modal overlays
+                "//div[contains(@class, 'modal')]//button[contains(text(), 'Close')]",
+                "//div[contains(@class, 'overlay')]//button[contains(text(), 'Close')]",
+                "//div[contains(@class, 'popup')]//button[contains(text(), 'Close')]"
+            ]
+            
+            # Try to close any visible popups
+            for selector in popup_selectors:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            logger.info(f"Found and closing popup: {selector}")
+                            self._human_like_click(element)
+                            self._human_like_delay(1, 2)
+                            break
+                except Exception as e:
+                    logger.debug(f"Error handling popup {selector}: {e}")
+                    continue
+            
+            # Check for and close any remaining overlays
+            overlay_selectors = [
+                "//div[contains(@class, 'overlay')]",
+                "//div[contains(@class, 'modal')]",
+                "//div[contains(@class, 'popup')]",
+                "//div[contains(@class, 'drawer')]",
+                "//div[contains(@class, 'sidebar')]"
+            ]
+            
+            for selector in overlay_selectors:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, selector)
+                    for element in elements:
+                        if element.is_displayed():
+                            # Try to find close button within overlay
+                            close_buttons = element.find_elements(By.XPATH, ".//button[contains(text(), 'Close')] | .//button[contains(@aria-label, 'Close')] | .//span[contains(@class, 'close')]")
+                            if close_buttons:
+                                for close_btn in close_buttons:
+                                    if close_btn.is_displayed() and close_btn.is_enabled():
+                                        logger.info(f"Closing overlay: {selector}")
+                                        self._human_like_click(close_btn)
+                                        self._human_like_delay(1, 2)
+                                        break
+                except Exception as e:
+                    logger.debug(f"Error handling overlay {selector}: {e}")
+                    continue
+            
+            logger.info("LinkedIn popups and overlays handled")
+            
+        except Exception as e:
+            logger.warning(f"Error handling LinkedIn popups: {e}")
+
+    def _clear_browser_data_before_login(self):
+        """Clear any remaining browser data before login attempt"""
+        try:
+            logger.info("Clearing browser data before LinkedIn login...")
+            
+            # Clear any remaining cookies
+            try:
+                self.driver.delete_all_cookies()
+                logger.debug("Remaining cookies cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing remaining cookies: {e}")
+            
+            # Clear any remaining local storage
+            try:
+                self.driver.execute_script("""
+                    if (window.localStorage) {
+                        window.localStorage.clear();
+                    }
+                    if (window.sessionStorage) {
+                        window.sessionStorage.clear();
+                    }
+                """)
+                logger.debug("Remaining storage cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing remaining storage: {e}")
+            
+            # Clear any form data that might have been filled
+            try:
+                self.driver.execute_script("""
+                    var inputs = document.querySelectorAll('input, textarea');
+                    for (var i = 0; i < inputs.length; i++) {
+                        inputs[i].value = '';
+                        inputs[i].checked = false;
+                        inputs[i].selectedIndex = -1;
+                    }
+                """)
+                logger.debug("Form data cleared")
+            except Exception as e:
+                logger.debug(f"Error clearing form data: {e}")
+            
+            logger.info("Browser data cleared before login")
+            
+        except Exception as e:
+            logger.warning(f"Error clearing browser data: {e}")
 
     def _find_linkedin_password_field(self, wait):
         """Find the password field on LinkedIn login page"""
@@ -2421,12 +3637,22 @@ class JobScraper:
         return self._verify_glassdoor_login_enhanced()
     
     def close_browser(self):
-        """Close the browser if open"""
+        """Close the browser if open and clear all data"""
         if self.driver:
             try:
+                logger.info("Closing browser and clearing all data...")
+                
+                # Clear all browser data before closing
+                self._complete_browser_cleanup(self.driver)
+                
+                # Close the browser
                 self.driver.quit()
                 self.driver = None
-                logger.info("Browser closed")
+                
+                # Clear any remaining files
+                self._clear_remaining_files()
+                
+                logger.info("Browser closed and all data cleared")
             except Exception as e:
                 logger.error(f"Error closing browser: {e}")
 
