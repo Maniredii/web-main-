@@ -177,6 +177,34 @@ class OllamaManager:
         response = self.query(prompt)
         return response if response else "Unable to generate cover letter at this time."
 
+    def optimize_resume_for_job(self, resume_text: str, job_description: str, compatibility_analysis: str) -> str:
+        """Optimize resume to better match job requirements"""
+        prompt = f"""
+        Optimize this resume to better match the job requirements:
+        
+        CURRENT RESUME:
+        {resume_text}
+        
+        JOB DESCRIPTION:
+        {job_description}
+        
+        COMPATIBILITY ANALYSIS:
+        {compatibility_analysis}
+        
+        Please optimize the resume by:
+        1. Adding relevant keywords from the job description
+        2. Highlighting skills that match the job requirements
+        3. Reorganizing content to emphasize relevant experience
+        4. Adding any missing qualifications mentioned in the job
+        5. Making the resume more targeted to this specific role
+        
+        Return the optimized resume text. Keep the same structure but enhance the content
+        to better match the job requirements.
+        """
+        
+        response = self.query(prompt)
+        return response if response else resume_text
+
 
 class ResumeParser:
     """Parses resume documents to extract text and information"""
@@ -2532,6 +2560,7 @@ class AutoJobApplierGUI:
         try:
             self.status_var.set("Loading resume...")
             self.resume_data = self.resume_parser.parse_resume(file_path)
+            self.resume_text = self.resume_data['text']  # Store resume text for automation
             self.log_message(f"✅ Resume loaded: {len(self.resume_data['text'])} characters")
             self.log_message(f"📋 Skills found: {', '.join(self.resume_data['skills'][:5])}")
             self.status_var.set("Resume loaded")
@@ -2597,6 +2626,10 @@ class AutoJobApplierGUI:
             # Store the jobs for later analysis
             self.current_jobs = self.job_scraper.linkedin_job_descriptions
             self.log_message(f"Loaded {len(self.job_scraper.linkedin_job_descriptions)} LinkedIn jobs with descriptions")
+            
+            # Enable automation button if resume is loaded
+            if hasattr(self, 'resume_text') and self.resume_text:
+                self.auto_apply_button.config(state=tk.NORMAL)
             
         elif jobs:
             # Fallback to regular job list
