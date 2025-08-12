@@ -205,6 +205,51 @@ class OllamaManager:
         response = self.query(prompt)
         return response if response else resume_text
 
+    def extract_job_details(self, job_description: str) -> Optional[Dict[str, Any]]:
+        """Extract and highlight key details from job description"""
+        prompt = f"""
+        Analyze this job description and extract key information:
+        
+        JOB DESCRIPTION:
+        {job_description}
+        
+        Please extract and return the following information in JSON format:
+        {{
+            "experience_level": "entry/junior/mid/senior/lead/principal",
+            "key_requirements": ["requirement1", "requirement2", "requirement3"],
+            "technologies": ["tech1", "tech2", "tech3"],
+            "education": "required education level",
+            "years_experience": "required years of experience",
+            "key_responsibilities": ["responsibility1", "responsibility2"],
+            "preferred_skills": ["skill1", "skill2", "skill3"]
+        }}
+        
+        Focus on identifying:
+        1. Technical skills and technologies
+        2. Experience requirements
+        3. Key qualifications
+        4. Important responsibilities
+        5. Preferred skills
+        
+        Return only valid JSON.
+        """
+        
+        response = self.query(prompt, max_tokens=1500)
+        if response:
+            try:
+                # Try to extract JSON from response
+                import re
+                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group())
+                else:
+                    return None
+            except Exception as e:
+                logger.error(f"Error parsing job details response: {e}")
+                return None
+        
+        return None
+
 
 class ResumeParser:
     """Parses resume documents to extract text and information"""
@@ -2950,55 +2995,87 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             total_jobs = len(self.current_jobs)
             successful_applications = 0
             failed_applications = 0
+            skipped_jobs = 0
             
-            self.log_message(f"📋 Starting automated applications for {total_jobs} jobs...")
+            self.log_message(f"📋 Starting intelligent automated applications for {total_jobs} jobs...")
+            self.log_message("🎯 System will analyze each job carefully and only apply to well-matched positions")
             
             for i, job in enumerate(self.current_jobs):
                 try:
                     # Update progress in GUI
                     self.root.after(0, lambda idx=i, total=total_jobs: self._update_automation_progress(idx, total))
                     
-                    self.log_message(f"\n🔄 Processing job {i+1}/{total_jobs}: {job.get('title', 'Unknown')}")
+                    self.log_message(f"\n{'='*60}")
+                    self.log_message(f"🔄 Processing job {i+1}/{total_jobs}: {job.get('title', 'Unknown')}")
+                    self.log_message(f"{'='*60}")
                     
-                    # Step 1: Read and analyze job description
+                    # Step 1: Carefully read and highlight job description
                     job_description = job.get('description', '')
                     if not job_description or job_description == "No description available":
                         self.log_message(f"⚠️ Skipping job {i+1}: No description available")
                         failed_applications += 1
                         continue
                     
-                    # Step 2: Analyze resume compatibility
-                    compatibility_analysis = self._analyze_job_compatibility(job_description)
-                    if not compatibility_analysis:
+                    # Highlight and analyze job description
+                    highlighted_job_info = self._highlight_job_description(job_description, job)
+                    if not highlighted_job_info:
                         self.log_message(f"❌ Failed to analyze job {i+1}")
                         failed_applications += 1
                         continue
                     
-                    # Step 3: Check if resume needs updates
-                    resume_updates_needed = self._check_resume_updates_needed(compatibility_analysis)
+                    # Step 2: Extract and highlight key skills from job
+                    job_skills = self._extract_job_skills(highlighted_job_info)
+                    self.log_message(f"🎯 Key job skills identified: {', '.join(job_skills[:10])}")
                     
-                    if resume_updates_needed:
-                        # Step 4: Update resume
-                        self.log_message(f"📝 Updating resume for job {i+1}...")
-                        updated_resume = self._update_resume_for_job(job_description, compatibility_analysis)
-                        if updated_resume:
-                            self.resume_text = updated_resume
-                            self.log_message(f"✅ Resume updated successfully for job {i+1}")
+                    # Step 3: Extract skills from resume
+                    resume_skills = self._extract_resume_skills()
+                    self.log_message(f"📋 Your resume skills: {', '.join(resume_skills[:10])}")
+                    
+                    # Step 4: Analyze skills compatibility
+                    compatibility_score, matching_skills, missing_skills = self._analyze_skills_compatibility(job_skills, resume_skills)
+                    
+                    self.log_message(f"📊 Skills Compatibility Analysis:")
+                    self.log_message(f"   • Overall Score: {compatibility_score}/100")
+                    self.log_message(f"   • Matching Skills: {len(matching_skills)}")
+                    self.log_message(f"   • Missing Skills: {len(missing_skills)}")
+                    
+                    # Step 5: Decision making - apply or skip?
+                    if compatibility_score >= 70:  # Good match
+                        self.log_message(f"✅ Job {i+1} is a GOOD MATCH! Proceeding with application...")
+                        should_apply = True
+                    elif compatibility_score >= 50:  # Moderate match - can improve
+                        self.log_message(f"⚠️ Job {i+1} is a MODERATE MATCH. Will optimize resume and apply...")
+                        should_apply = True
+                    else:  # Poor match
+                        self.log_message(f"❌ Job {i+1} is a POOR MATCH. Skipping to save time...")
+                        self.log_message(f"   • Missing critical skills: {', '.join(missing_skills[:5])}")
+                        should_apply = False
+                        skipped_jobs += 1
+                        continue
+                    
+                    if should_apply:
+                        # Step 6: Optimize resume if needed
+                        if compatibility_score < 80:  # Room for improvement
+                            self.log_message(f"📝 Optimizing resume for job {i+1}...")
+                            optimized_resume = self._optimize_resume_for_specific_job(job_description, job_skills, missing_skills)
+                            if optimized_resume:
+                                self.resume_text = optimized_resume
+                                self.log_message(f"✅ Resume optimized for job {i+1}")
+                            else:
+                                self.log_message(f"⚠️ Resume optimization failed for job {i+1}, using original")
+                        
+                        # Step 7: Apply to the job
+                        self.log_message(f"📤 Applying to job {i+1}: {job.get('title', 'Unknown')}")
+                        application_success = self._apply_to_linkedin_job(job, i+1)
+                        
+                        if application_success:
+                            successful_applications += 1
+                            self.log_message(f"✅ Successfully applied to job {i+1}")
                         else:
-                            self.log_message(f"⚠️ Resume update failed for job {i+1}, using original")
+                            failed_applications += 1
+                            self.log_message(f"❌ Failed to apply to job {i+1}")
                     
-                    # Step 5: Apply to the job
-                    self.log_message(f"📤 Applying to job {i+1}: {job.get('title', 'Unknown')}")
-                    application_success = self._apply_to_linkedin_job(job, i+1)
-                    
-                    if application_success:
-                        successful_applications += 1
-                        self.log_message(f"✅ Successfully applied to job {i+1}")
-                    else:
-                        failed_applications += 1
-                        self.log_message(f"❌ Failed to apply to job {i+1}")
-                    
-                    # Step 6: Move to next job (with delay)
+                    # Step 8: Move to next job (with delay)
                     if i < total_jobs - 1:  # Not the last job
                         self.log_message(f"⏳ Waiting before next job...")
                         self._human_like_delay(5, 10)  # 5-10 second delay between jobs
@@ -3009,11 +3086,199 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     continue
             
             # Final summary
-            self._complete_automation_pipeline(successful_applications, failed_applications, total_jobs)
+            self._complete_automation_pipeline(successful_applications, failed_applications, skipped_jobs, total_jobs)
             
         except Exception as e:
             self.log_message(f"❌ Automation pipeline error: {str(e)}")
             self.root.after(0, lambda: self._reset_automation_controls())
+
+    def _highlight_job_description(self, job_description: str, job: dict) -> dict:
+        """Carefully read and highlight key information from job description"""
+        try:
+            self.log_message("🔍 Carefully analyzing job description...")
+            
+            # Use AI to extract and highlight key information
+            highlighted_info = self.ollama_manager.extract_job_details(job_description)
+            
+            if highlighted_info:
+                self.log_message("📋 Job Analysis Results:")
+                self.log_message(f"   • Title: {job.get('title', 'Unknown')}")
+                self.log_message(f"   • Company: {job.get('company', 'Unknown')}")
+                self.log_message(f"   • Location: {job.get('location', 'Unknown')}")
+                self.log_message(f"   • Experience Level: {highlighted_info.get('experience_level', 'Not specified')}")
+                self.log_message(f"   • Key Requirements: {', '.join(highlighted_info.get('key_requirements', [])[:5])}")
+                self.log_message(f"   • Technologies: {', '.join(highlighted_info.get('technologies', [])[:5])}")
+                
+                return highlighted_info
+            else:
+                # Fallback: basic parsing
+                return self._basic_job_parsing(job_description)
+                
+        except Exception as e:
+            self.log_message(f"Error highlighting job description: {str(e)}")
+            return self._basic_job_parsing(job_description)
+
+    def _basic_job_parsing(self, job_description: str) -> dict:
+        """Basic parsing when AI analysis fails"""
+        try:
+            # Simple keyword extraction
+            keywords = {
+                'experience_level': ['entry', 'junior', 'mid', 'senior', 'lead', 'principal'],
+                'technologies': ['python', 'java', 'javascript', 'react', 'node.js', 'aws', 'docker', 'kubernetes'],
+                'requirements': ['bachelor', 'master', 'phd', 'degree', 'certification', 'experience']
+            }
+            
+            result = {}
+            for category, terms in keywords.items():
+                found = []
+                for term in terms:
+                    if term.lower() in job_description.lower():
+                        found.append(term)
+                result[category] = found
+            
+            return result
+            
+        except Exception as e:
+            self.log_message(f"Error in basic parsing: {str(e)}")
+            return {}
+
+    def _extract_job_skills(self, job_info: dict) -> list:
+        """Extract key skills from analyzed job information"""
+        try:
+            skills = set()
+            
+            # Extract from different categories
+            if 'technologies' in job_info:
+                skills.update(job_info['technologies'])
+            
+            if 'key_requirements' in job_info:
+                skills.update(job_info['key_requirements'])
+            
+            # Add common technical skills
+            technical_skills = [
+                'python', 'java', 'javascript', 'react', 'angular', 'vue', 'node.js',
+                'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'git', 'sql', 'nosql',
+                'machine learning', 'ai', 'data analysis', 'agile', 'scrum'
+            ]
+            
+            # Check which technical skills are mentioned in the job
+            for skill in technical_skills:
+                if skill.lower() in str(job_info).lower():
+                    skills.add(skill)
+            
+            return list(skills)
+            
+        except Exception as e:
+            self.log_message(f"Error extracting job skills: {str(e)}")
+            return []
+
+    def _extract_resume_skills(self) -> list:
+        """Extract skills from the loaded resume"""
+        try:
+            if hasattr(self, 'resume_data') and self.resume_data:
+                return self.resume_data.get('skills', [])
+            else:
+                # Fallback: extract from resume text
+                resume_text = getattr(self, 'resume_text', '')
+                if resume_text:
+                    # Simple skill extraction from text
+                    common_skills = [
+                        'python', 'java', 'javascript', 'react', 'angular', 'vue', 'node.js',
+                        'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'git', 'sql', 'nosql',
+                        'machine learning', 'ai', 'data analysis', 'agile', 'scrum'
+                    ]
+                    
+                    found_skills = []
+                    for skill in common_skills:
+                        if skill.lower() in resume_text.lower():
+                            found_skills.append(skill)
+                    
+                    return found_skills
+            
+            return []
+            
+        except Exception as e:
+            self.log_message(f"Error extracting resume skills: {str(e)}")
+            return []
+
+    def _analyze_skills_compatibility(self, job_skills: list, resume_skills: list) -> tuple:
+        """Analyze compatibility between job requirements and resume skills"""
+        try:
+            if not job_skills:
+                return 0, [], []
+            
+            if not resume_skills:
+                return 0, [], resume_skills
+            
+            # Convert to lowercase for comparison
+            job_skills_lower = [skill.lower() for skill in job_skills]
+            resume_skills_lower = [skill.lower() for skill in resume_skills]
+            
+            # Find matching skills
+            matching_skills = []
+            for skill in resume_skills:
+                if skill.lower() in job_skills_lower:
+                    matching_skills.append(skill)
+            
+            # Find missing skills
+            missing_skills = []
+            for skill in job_skills:
+                if skill.lower() not in resume_skills_lower:
+                    missing_skills.append(skill)
+            
+            # Calculate compatibility score
+            if len(job_skills) == 0:
+                compatibility_score = 100
+            else:
+                compatibility_score = (len(matching_skills) / len(job_skills)) * 100
+            
+            return round(compatibility_score, 1), matching_skills, missing_skills
+            
+        except Exception as e:
+            self.log_message(f"Error analyzing skills compatibility: {str(e)}")
+            return 0, [], []
+
+    def _optimize_resume_for_specific_job(self, job_description: str, job_skills: list, missing_skills: list) -> str:
+        """Optimize resume specifically for a job with missing skills"""
+        try:
+            self.log_message(f"🔄 Optimizing resume for job with missing skills: {', '.join(missing_skills[:5])}")
+            
+            # Create targeted optimization prompt
+            optimization_prompt = f"""
+            Optimize this resume to better match the job requirements:
+            
+            JOB DESCRIPTION:
+            {job_description[:1000]}
+            
+            MISSING SKILLS TO ADDRESS:
+            {', '.join(missing_skills)}
+            
+            CURRENT RESUME:
+            {self.resume_text[:2000]}
+            
+            Please optimize the resume by:
+            1. Adding relevant keywords from the job description
+            2. Highlighting transferable skills that could apply to missing requirements
+            3. Reorganizing content to emphasize relevant experience
+            4. Adding any missing qualifications mentioned in the job
+            5. Making the resume more targeted to this specific role
+            
+            Return the optimized resume text. Keep the same structure but enhance the content
+            to better match the job requirements and address the missing skills.
+            """
+            
+            # Use Ollama for optimization
+            optimized_resume = self.ollama_manager.query(optimization_prompt, max_tokens=2000)
+            
+            if optimized_resume and len(optimized_resume) > 100:
+                return optimized_resume
+            else:
+                self.log_message("⚠️ Resume optimization failed, using original")
+                return self.resume_text
+                
+        except Exception as e:
+            self.log_message(f"Error optimizing resume: {str(e)}")
+            return self.resume_text
 
     def _update_automation_progress(self, current_job, total_jobs):
         """Update the automation progress in the GUI"""
@@ -3320,8 +3585,6 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             # Look for submit button
             submit_selectors = [
                 "//button[contains(text(), 'Submit')]",
-                "//button[contains(text(), 'Send')]",
-                "//button[contains(text(), 'Apply')]",
                 "//button[contains(@class, 'submit')]",
                 "//button[contains(@class, 'send')]"
             ]
@@ -3613,7 +3876,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 try:
                     submit_button = self.driver.find_element(By.XPATH, selector)
                     if submit_button and submit_button.is_displayed() and submit_button.is_enabled():
-                        self.log_message(f"📤 Submitting application for job {job_number}...")
+                        self.log_message(f"📤 Submitting application for job {job_number}")
                         self._human_like_click(submit_button)
                         self._human_like_delay(3, 5)
                         
@@ -3635,17 +3898,17 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             self.log_message(f"Error submitting application: {str(e)}")
             return False
 
-    def _complete_automation_pipeline(self, successful, failed, total):
+    def _complete_automation_pipeline(self, successful, failed, skipped, total):
         """Complete the automation pipeline and show results"""
         try:
             # Update GUI in main thread
-            self.root.after(0, lambda: self._show_automation_results(successful, failed, total))
+            self.root.after(0, lambda: self._show_automation_results(successful, failed, skipped, total))
             self.root.after(0, lambda: self._reset_automation_controls())
             
         except Exception as e:
             self.log_message(f"Error completing automation: {str(e)}")
 
-    def _show_automation_results(self, successful, failed, total):
+    def _show_automation_results(self, successful, failed, skipped, total):
         """Show the results of the automation pipeline"""
         results_message = f"""🎉 Automated Job Application Pipeline Complete!
 
@@ -3653,6 +3916,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 • Total Jobs Processed: {total}
 • Successful Applications: {successful}
 • Failed Applications: {failed}
+• Skipped Jobs: {skipped}
 • Success Rate: {(successful/total*100):.1f}%
 
 ✅ What was accomplished:
