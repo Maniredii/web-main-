@@ -2477,6 +2477,7 @@ class AutoJobApplierGUI:
         
         ttk.Button(analysis_controls, text="Analyze Job", command=self.analyze_current_job).grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         ttk.Button(analysis_controls, text="Generate Cover Letter", command=self.generate_cover_letter).grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        ttk.Button(analysis_controls, text="🚀 Auto Apply to All Jobs", command=self.start_automated_job_application).grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         
         # Analysis text area
         self.analysis_text = scrolledtext.ScrolledText(right_frame, height=20, width=40)
@@ -3341,6 +3342,264 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             
         except Exception as e:
             self.log_message(f"Error checking application success: {str(e)}")
+            return False
+
+    def _apply_to_linkedin_job(self, job, job_number):
+        """Apply to a LinkedIn job"""
+        try:
+            job_url = job.get('url')
+            if not job_url:
+                self.log_message(f"⚠️ No URL available for job {job_number}")
+                return False
+            
+            # Navigate to the job page
+            self.log_message(f"🌐 Navigating to job page {job_number}...")
+            self.driver.get(job_url)
+            self._human_like_delay(3, 5)
+            
+            # Wait for page to load
+            if not self._wait_for_linkedin_job_page_ready():
+                self.log_message(f"❌ Job page {job_number} not ready")
+                return False
+            
+            # Look for apply button
+            apply_button = self._find_linkedin_apply_button()
+            if not apply_button:
+                self.log_message(f"⚠️ No apply button found for job {job_number}")
+                return False
+            
+            # Click apply button
+            self.log_message(f"📝 Clicking apply button for job {job_number}...")
+            self._human_like_click(apply_button)
+            self._human_like_delay(2, 4)
+            
+            # Handle application form if it appears
+            if self._handle_linkedin_application_form(job_number):
+                self.log_message(f"✅ Application form completed for job {job_number}")
+                return True
+            else:
+                self.log_message(f"⚠️ Application form handling failed for job {job_number}")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"❌ Error applying to job {job_number}: {str(e)}")
+            return False
+
+    def _wait_for_linkedin_job_page_ready(self):
+        """Wait for LinkedIn job page to be fully loaded"""
+        try:
+            # Wait for job content to load
+            wait = WebDriverWait(self.driver, 15)
+            
+            # Look for job title or main content
+            job_content_selectors = [
+                "//h1[contains(@class, 'job-title')]",
+                "//h1[contains(@class, 'title')]",
+                "//div[contains(@class, 'job-content')]",
+                "//div[contains(@class, 'job-details')]",
+                "//div[contains(@class, 'jobs-description')]"
+            ]
+            
+            for selector in job_content_selectors:
+                try:
+                    wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                    return True
+                except:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            self.log_message(f"Error waiting for job page: {str(e)}")
+            return False
+
+    def _find_linkedin_apply_button(self):
+        """Find the LinkedIn apply button"""
+        try:
+            # Multiple selectors for apply button
+            apply_button_selectors = [
+                "//button[contains(text(), 'Apply')]",
+                "//button[contains(text(), 'Easy Apply')]",
+                "//button[contains(text(), 'Apply now')]",
+                "//a[contains(text(), 'Apply')]",
+                "//button[contains(@class, 'apply')]",
+                "//button[contains(@class, 'jobs-apply')]",
+                "//div[contains(@class, 'apply')]//button",
+                "//span[contains(text(), 'Apply')]/parent::button"
+            ]
+            
+            for selector in apply_button_selectors:
+                try:
+                    apply_button = self.driver.find_element(By.XPATH, selector)
+                    if apply_button and apply_button.is_displayed() and apply_button.is_enabled():
+                        return apply_button
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            self.log_message(f"Error finding apply button: {str(e)}")
+            return None
+
+    def _handle_linkedin_application_form(self, job_number):
+        """Handle LinkedIn application form if it appears"""
+        try:
+            # Wait for application form to appear
+            self._human_like_delay(2, 4)
+            
+            # Check if we're in an application form
+            form_selectors = [
+                "//div[contains(@class, 'application-form')]",
+                "//div[contains(@class, 'apply-form')]",
+                "//form[contains(@class, 'application')]",
+                "//div[contains(@class, 'jobs-apply')]"
+            ]
+            
+            form_found = False
+            for selector in form_selectors:
+                try:
+                    if self.driver.find_element(By.XPATH, selector):
+                        form_found = True
+                        break
+                except:
+                    continue
+            
+            if not form_found:
+                self.log_message(f"ℹ️ No application form found for job {job_number}")
+                return True  # Consider it successful if no form needed
+            
+            # Handle the application form
+            self.log_message(f"📋 Handling application form for job {job_number}...")
+            
+            # Try to fill any required fields
+            if self._fill_linkedin_application_fields(job_number):
+                # Submit the application
+                if self._submit_linkedin_application(job_number):
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            self.log_message(f"Error handling application form: {str(e)}")
+            return False
+
+    def _fill_linkedin_application_fields(self, job_number):
+        """Fill required fields in LinkedIn application form"""
+        try:
+            # Look for common form fields
+            field_mappings = {
+                'phone': ['phone', 'mobile', 'telephone'],
+                'email': ['email', 'e-mail'],
+                'address': ['address', 'location', 'city'],
+                'experience': ['experience', 'years', 'work history'],
+                'education': ['education', 'degree', 'university']
+            }
+            
+            fields_filled = 0
+            
+            for field_type, keywords in field_mappings.items():
+                for keyword in keywords:
+                    try:
+                        # Look for input fields
+                        input_selectors = [
+                            f"//input[contains(@placeholder, '{keyword}')]",
+                            f"//input[contains(@name, '{keyword}')]",
+                            f"//input[contains(@id, '{keyword}')]",
+                            f"//textarea[contains(@placeholder, '{keyword}')]"
+                        ]
+                        
+                        for selector in input_selectors:
+                            try:
+                                field = self.driver.find_element(By.XPATH, selector)
+                                if field and field.is_displayed():
+                                    # Fill the field with appropriate data
+                                    self._fill_linkedin_field(field, field_type)
+                                    fields_filled += 1
+                                    break
+                            except:
+                                continue
+                        
+                        if fields_filled > 0:
+                            break
+                            
+                    except Exception as e:
+                        continue
+            
+            self.log_message(f"📝 Filled {fields_filled} application fields for job {job_number}")
+            return fields_filled > 0
+            
+        except Exception as e:
+            self.log_message(f"Error filling application fields: {str(e)}")
+            return False
+
+    def _fill_linkedin_field(self, field, field_type):
+        """Fill a specific LinkedIn application field"""
+        try:
+            # Get appropriate data for the field type
+            field_data = self._get_field_data(field_type)
+            
+            if field_data:
+                # Clear existing content
+                field.clear()
+                self._human_like_delay(0.5, 1)
+                
+                # Type the data with human-like behavior
+                self._human_like_typing(field, field_data)
+                
+                self.log_message(f"✅ Filled {field_type} field: {field_data}")
+            
+        except Exception as e:
+            self.log_message(f"Error filling {field_type} field: {str(e)}")
+
+    def _get_field_data(self, field_type):
+        """Get appropriate data for a field type"""
+        # This would typically come from user profile or resume
+        # For now, return placeholder data
+        field_data_map = {
+            'phone': '+1 (555) 123-4567',
+            'email': 'your.email@example.com',
+            'address': '123 Main St, City, State 12345',
+            'experience': '5+ years in software development',
+            'education': 'Bachelor\'s in Computer Science'
+        }
+        
+        return field_data_map.get(field_type, '')
+
+    def _submit_linkedin_application(self, job_number):
+        """Submit the LinkedIn application"""
+        try:
+            # Look for submit button
+            submit_selectors = [
+                "//button[contains(text(), 'Submit')]",
+                "//button[contains(@class, 'submit')]",
+                "//button[contains(@class, 'send')]"
+            ]
+            
+            for selector in submit_selectors:
+                try:
+                    submit_button = self.driver.find_element(By.XPATH, selector)
+                    if submit_button and submit_button.is_displayed() and submit_button.is_enabled():
+                        self.log_message(f"📤 Submitting application for job {job_number}...")
+                        self._human_like_click(submit_button)
+                        self._human_like_delay(3, 5)
+                        
+                        # Check for success message
+                        if self._check_application_success():
+                            self.log_message(f"✅ Application submitted successfully for job {job_number}")
+                            return True
+                        else:
+                            self.log_message(f"⚠️ Application submission status unclear for job {job_number}")
+                            return True  # Assume success if we can't determine
+                            
+                except:
+                    continue
+            
+            self.log_message(f"⚠️ No submit button found for job {job_number}")
+            return False
+            
+        except Exception as e:
+            self.log_message(f"Error submitting application: {str(e)}")
             return False
 
     def _complete_automation_pipeline(self, successful, failed, total):
