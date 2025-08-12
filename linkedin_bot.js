@@ -41,7 +41,7 @@ async function linkedinLogin(page, email, password) {
     try {
         console.log("[INFO] Navigating to LinkedIn login...");
         await page.goto('https://www.linkedin.com/login', { waitUntil: 'networkidle2' });
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         const emailField = await page.waitForSelector('#username, input[name="session_key"]', { timeout: 10000 });
         await emailField.type(email, { delay: 100 });
@@ -55,7 +55,7 @@ async function linkedinLogin(page, email, password) {
         await signinButton.click();
         console.log("[INFO] Sign in clicked");
         
-        await page.waitForTimeout(5000);
+        await new Promise(resolve => setTimeout(resolve, 5000));
         const currentUrl = page.url();
         
         if (currentUrl.includes('feed') || currentUrl.includes('mynetwork')) {
@@ -76,18 +76,18 @@ async function navigateToJobs(page, keywords, location) {
     try {
         console.log("[INFO] Navigating to LinkedIn jobs...");
         await page.goto('https://www.linkedin.com/jobs/', { waitUntil: 'networkidle2' });
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         const searchInput = await page.waitForSelector('input[placeholder*="Search"]', { timeout: 10000 });
         await searchInput.type(keywords, { delay: 100 });
         
         const locationInput = await page.waitForSelector('input[placeholder*="City"]', { timeout: 10000 });
-        await locationInput.type(location, { delay: 100 });
+        await locationInput.type(location, { timeout: 10000 });
         
         const searchButton = await page.waitForSelector('button:contains("Search")', { timeout: 10000 });
         await searchButton.click();
         
-        await page.waitForTimeout(5000);
+        await new Promise(resolve => setTimeout(resolve, 5000));
         console.log("[SUCCESS] Navigated to jobs with search");
         return true;
         
@@ -100,7 +100,7 @@ async function navigateToJobs(page, keywords, location) {
 async function readJobDescriptions(page) {
     try {
         console.log("[INFO] Reading job descriptions...");
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         const jobCards = await page.$$('.jobs-search-results__list-item');
         console.log(`[INFO] Found ${jobCards.length} job cards`);
@@ -112,10 +112,10 @@ async function readJobDescriptions(page) {
             try {
                 const jobCard = jobCards[i];
                 await jobCard.scrollIntoView();
-                await page.waitForTimeout(1000);
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 await jobCard.click();
-                await page.waitForTimeout(2000);
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 const jobInfo = await page.evaluate(() => {
                     const titleElement = document.querySelector('.jobs-unified-top-card__job-title, h1');
@@ -132,7 +132,7 @@ async function readJobDescriptions(page) {
                 
                 jobs.push(jobInfo);
                 console.log(`[INFO] Processed job ${i + 1}: ${jobInfo.title}`);
-                await page.waitForTimeout(2000);
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
             } catch (error) {
                 console.log(`[WARN] Error processing job ${i + 1}: ${error.message}`);
@@ -193,7 +193,7 @@ async function main() {
             console.log(`[SUCCESS] Saved ${jobs.length} jobs to linkedin_jobs.json`);
             
             console.log("[INFO] Automation complete. Browser will close in 10 seconds...");
-            await page.waitForTimeout(10000);
+            await new Promise(resolve => setTimeout(resolve, 10000));
             
         } finally {
             await browser.close();

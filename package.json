@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Maniredii/web-main-#readme",
   "dependencies": {
+    "puppeteer": "^24.16.1",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-anonymize-ua": "^2.4.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
