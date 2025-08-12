@@ -1,0 +1,8 @@
+python-docx>=0.8.11
+tkinter
+threading
+json
+os
+time
+datetime
+shutil

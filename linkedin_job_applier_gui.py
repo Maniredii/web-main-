@@ -155,8 +155,7 @@ class LinkedInJobApplierGUI:
         # Main automation button
         self.start_button = ttk.Button(controls_frame, 
                                      text="🚀 Start LinkedIn Automation", 
-                                     command=self.start_automation,
-                                     style='Accent.TButton')
+                                     command=self.start_automation)
         self.start_button.pack(pady=10)
         
         # Secondary controls
