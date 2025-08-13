@@ -36,35 +36,51 @@ class LinkedInJobApplierGUI:
         
     def setup_ui(self):
         """Setup the complete user interface"""
-        # Main container
-        main_container = ttk.Frame(self.root, padding="20")
-        main_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # Configure grid weights
+        # Scrollable container (so sections below Start button are visible)
+        container = ttk.Frame(self.root)
+        container.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_container.columnconfigure(1, weight=1)
-        
-        # Title and header
-        self.create_header(main_container)
-        
-        # Resume section
-        self.create_resume_section(main_container)
-        
-        # Job search section
-        self.create_job_search_section(main_container)
-        
-        # Automation controls
-        self.create_automation_controls(main_container)
-        
-        # Status and progress
-        self.create_status_section(main_container)
-        
-        # Results section
-        self.create_results_section(main_container)
-        
-        # Settings section
-        self.create_settings_section(main_container)
+
+        canvas = tk.Canvas(container, highlightthickness=0)
+        vscroll = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vscroll.set)
+
+        scrollable_frame = ttk.Frame(canvas, padding="20")
+
+        # When the size of the frame changes, update the scrollregion of the canvas
+        scrollable_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        # Create window inside canvas
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        # Ensure canvas expands
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+        canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        vscroll.grid(row=0, column=1, sticky=(tk.N, tk.S))
+
+        # Mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # Make inner frame width track canvas width
+        def _resize_frame(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind("<Configure>", _resize_frame)
+
+        # Build UI into the scrollable frame
+        self.create_header(scrollable_frame)
+        self.create_resume_section(scrollable_frame)
+        self.create_job_search_section(scrollable_frame)
+        self.create_automation_controls(scrollable_frame)
+        self.create_status_section(scrollable_frame)
+        self.create_results_section(scrollable_frame)
+        self.create_settings_section(scrollable_frame)
         
     def create_header(self, parent):
         """Create the header section"""
@@ -375,10 +391,10 @@ class LinkedInJobApplierGUI:
             location = self.location_var.get()
             
             self.root.after(0, lambda: self.status_var.set(f"Starting LinkedIn automation..."))
-            self.root.after(0, lambda: self.current_step_var.set("Initializing browser..."))
+            self.root.after(0, lambda: self.current_step_var.set("Initializing browser... If a puzzle appears, complete it in the browser; automation will resume automatically."))
             
             # Start the automation
-            success = self.puppeteer_bridge.start_linkedin_automation(keywords, location)
+            success = self.puppeteer_bridge.start_linkedin_automation(keywords, location, self.resume_path)
             
             if success:
                 self.root.after(0, lambda: self.status_var.set("Automation completed successfully!"))
