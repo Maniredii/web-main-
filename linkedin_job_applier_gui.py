@@ -11,7 +11,7 @@ import json
 import os
 import time
 from datetime import datetime
-from puppeteer_bridge import PuppeteerBridge
+from simple_puppeteer_bridge import PuppeteerBridge
 from docx import Document
 import shutil
 

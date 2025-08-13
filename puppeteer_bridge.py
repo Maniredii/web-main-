@@ -126,9 +126,30 @@ async function launchBrowser(executablePath) {
 
     const page = await browser.newPage();
     
+    // Set explicit viewport to avoid width/height errors
+    await page.setViewport({ width: 1920, height: 1080 });
+    
+    // Add page error handling
+    page.on('error', err => {
+        console.log('[ERROR] Page error:', err.message);
+    });
+    
+    page.on('pageerror', err => {
+        console.log('[ERROR] Page error:', err.message);
+    });
+    
+    page.on('console', msg => {
+        console.log('[PAGE] Console:', msg.text());
+    });
+    
     // Apply the generated fingerprint to the page
-    const fingerprintInjector = new FingerprintInjector();
-    await fingerprintInjector.attachFingerprintToPage(page, fingerprint);
+    try {
+        const fingerprintInjector = new FingerprintInjector();
+        await fingerprintInjector.attachFingerprintToPage(page, fingerprint);
+        console.log("[DEBUG] Fingerprint applied successfully");
+    } catch (fpError) {
+        console.log("[WARN] Fingerprint application failed:", fpError.message);
+    }
     
     // Additional stealth measures
     const userAgent = fingerprint.userAgent || randomUseragent.getRandom();
@@ -378,60 +399,8 @@ async function navigateToJobs(page, keywords, location) {
         // Wait for any security checkpoints to complete with a natural delay
         await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 3000));
         
-        // First check if we need to log in
-        console.log("[INFO] Checking login status...");
-        await page.goto('https://www.linkedin.com/login', { waitUntil: 'networkidle2', timeout: 60000 });
-        
-        // Wait to see if we get redirected to feed (already logged in)
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        let currentUrl = page.url();
-        
-        if (currentUrl.includes('feed') || 
-            currentUrl.includes('mynetwork') || 
-            currentUrl.includes('messaging') ||
-            currentUrl.includes('profile') ||
-            currentUrl.includes('jobs')) {
-            console.log("[INFO] Already logged in, proceeding to job search...");
-        } else {
-            console.log("[INFO] Not logged in. Please log in manually in the browser window.");
-            console.log("[INFO] Waiting for manual login to complete...");
-            
-            // Wait for login to complete (up to 5 minutes)
-            let attempts = 0;
-            const maxAttempts = 60; // 5 minutes
-            
-            while (attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5 seconds
-                attempts++;
-                
-                const newUrl = page.url();
-                console.log(`[INFO] Current URL (attempt ${attempts}/${maxAttempts}): ${newUrl}`);
-                
-                if (newUrl.includes('feed') || 
-                    newUrl.includes('mynetwork') || 
-                    newUrl.includes('messaging') ||
-                    newUrl.includes('profile') ||
-                    newUrl.includes('jobs')) {
-                    console.log("[SUCCESS] Login completed successfully!");
-                    break;
-                }
-                
-                if (attempts >= maxAttempts) {
-                    console.log("[ERROR] Login timeout - please complete login manually");
-                    return false;
-                }
-            }
-        }
-        
-        // Now visit the feed to appear more natural
-        await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'networkidle2', timeout: 60000 });
-        console.log("[INFO] Visiting LinkedIn feed (more natural behavior)...");
-        
-        // Scroll down a bit like a human would
-        await humanScroll(page, Math.random() * 500 + 300);
-        
-        // Pause as if reading content
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 4000 + 3000));
+        // Since we're already logged in, go directly to job search
+        console.log("[INFO] Already logged in, proceeding to job search...");
         
         // Navigate directly to the search URL with parameters to ensure results load
         const encodedKeywords = encodeURIComponent(keywords);
@@ -781,12 +750,81 @@ async function main() {
         const { browser, page } = await launchBrowser(executablePath);
         
         try {
-            const loginSuccess = await linkedinLogin(page, email, password);
-            if (!loginSuccess) {
-                console.log("[ERROR] Login failed, stopping");
-                return;
+            // First, test if the page is working by going to a simple page
+            console.log("[INFO] Testing page functionality with a simple page...");
+            await page.goto('https://www.google.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
+            console.log("[DEBUG] Google page title:", await page.title());
+            await page.waitForTimeout(2000);
+            
+            // Now navigate to LinkedIn login page
+            console.log("[INFO] Navigating to LinkedIn login page...");
+            
+            // Add debugging for page state
+            console.log("[DEBUG] Current page title before LinkedIn navigation:", await page.title());
+            console.log("[DEBUG] Current URL before LinkedIn navigation:", page.url());
+            
+            // Navigate to LinkedIn with better error handling
+            try {
+                await page.goto('https://www.linkedin.com/login', { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 60000 
+                });
+                console.log("[INFO] Navigation completed");
+                console.log("[DEBUG] Page title after navigation:", await page.title());
+                console.log("[DEBUG] Current URL after navigation:", page.url());
+                
+                // Wait a bit for page to fully load
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Check if page loaded successfully
+                const pageTitle = await page.title();
+                if (pageTitle && !pageTitle.includes('Error') && !pageTitle.includes('Cannot')) {
+                    console.log("[INFO] Successfully arrived at LinkedIn login page");
+                } else {
+                    console.log("[WARN] Page may not have loaded correctly. Title:", pageTitle);
+                }
+                
+            } catch (navError) {
+                console.log("[ERROR] Navigation failed:", navError.message);
+                // Try alternative approach
+                console.log("[INFO] Trying alternative navigation method...");
+                await page.goto('https://www.linkedin.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(2000);
+                await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+                console.log("[INFO] Alternative navigation completed");
             }
             
+            // Wait for manual login to complete
+            console.log("[INFO] Please log in manually in the browser window...");
+            console.log("[INFO] Waiting for login to complete...");
+            
+            // Wait for login to complete (up to 5 minutes)
+            let attempts = 0;
+            const maxAttempts = 60; // 5 minutes
+            
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5 seconds
+                attempts++;
+                
+                const currentUrl = page.url();
+                console.log(`[INFO] Current URL (attempt ${attempts}/${maxAttempts}): ${currentUrl}`);
+                
+                if (currentUrl.includes('feed') || 
+                    currentUrl.includes('mynetwork') || 
+                    currentUrl.includes('messaging') ||
+                    currentUrl.includes('profile') ||
+                    currentUrl.includes('jobs')) {
+                    console.log("[SUCCESS] Login completed successfully!");
+                    break;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    console.log("[ERROR] Login timeout - please complete login manually");
+                    return;
+                }
+            }
+            
+            // Now navigate to jobs
             const navigationSuccess = await navigateToJobs(page, keywords, location);
             if (!navigationSuccess) {
                 console.log("[ERROR] Failed to navigate to jobs, stopping");
