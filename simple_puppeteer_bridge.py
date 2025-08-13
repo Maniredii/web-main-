@@ -92,6 +92,84 @@ async function launchBrowser(executablePath) {
     return { browser, page };
 }
 
+async function applyToJobs(page, resumePath) {
+    try {
+        console.log("[INFO] Scanning for job listings...");
+        
+        // Wait for job cards to load
+        await page.waitForSelector('.jobs-search-results__list-item', { timeout: 30000 });
+        
+        // Get all job listings
+        const jobCards = await page.$$('.jobs-search-results__list-item');
+        console.log(`[INFO] Found ${jobCards.length} job listings`);
+        
+        let appliedCount = 0;
+        const maxApplications = 5; // Limit to prevent spam
+        
+        for (let i = 0; i < Math.min(jobCards.length, maxApplications); i++) {
+            try {
+                console.log(`[INFO] Processing job ${i + 1}/${Math.min(jobCards.length, maxApplications)}`);
+                
+                // Click on the job card to open details
+                await jobCards[i].click();
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Check if there's an apply button
+                const applyButton = await page.$('button[aria-label*="Apply"], button[aria-label*="Easy Apply"], .jobs-apply-button');
+                
+                if (applyButton) {
+                    console.log(`[INFO] Apply button found for job ${i + 1}`);
+                    
+                    // Click apply button
+                    await applyButton.click();
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Check if we need to upload resume
+                    const uploadButton = await page.$('input[type="file"], button[aria-label*="Upload"]');
+                    if (uploadButton && resumePath) {
+                        console.log(`[INFO] Uploading resume: ${resumePath}`);
+                        await uploadButton.uploadFile(resumePath);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                    
+                    // Look for submit button
+                    const submitButton = await page.$('button[aria-label*="Submit"], button[aria-label*="Send"], button[type="submit"]');
+                    if (submitButton) {
+                        await submitButton.click();
+                        console.log(`[INFO] Successfully applied to job ${i + 1}`);
+                        appliedCount++;
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    } else {
+                        console.log(`[WARN] Submit button not found for job ${i + 1}`);
+                    }
+                    
+                    // Close any modals
+                    const closeButton = await page.$('button[aria-label*="Close"], button[aria-label*="Dismiss"]');
+                    if (closeButton) {
+                        await closeButton.click();
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } else {
+                    console.log(`[INFO] No apply button found for job ${i + 1}`);
+                }
+                
+                // Wait between applications
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+            } catch (error) {
+                console.log(`[WARN] Error processing job ${i + 1}: ${error.message}`);
+                continue;
+            }
+        }
+        
+        console.log(`[SUCCESS] Applied to ${appliedCount} jobs out of ${Math.min(jobCards.length, maxApplications)} processed`);
+        
+    } catch (error) {
+        console.log(`[ERROR] Job application process failed: ${error.message}`);
+    }
+}
+
 async function main() {
     try {
         const fs = require('fs');
@@ -158,18 +236,25 @@ async function main() {
                 }
             }
             
-            // Navigate to job search
-            console.log("[INFO] Navigating to job search...");
-            const encodedKeywords = encodeURIComponent(keywords);
-            const encodedLocation = encodeURIComponent(location);
-            const searchUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodedKeywords}&location=${encodedLocation}`;
-            
-            await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-            console.log("[INFO] Arrived at job search page");
-            
-            // Wait for user to see the results
-            console.log("[INFO] Job search completed. Browser will stay open for 30 seconds...");
-            await new Promise(resolve => setTimeout(resolve, 30000));
+                         // Navigate to job search
+             console.log("[INFO] Navigating to job search...");
+             const encodedKeywords = encodeURIComponent(keywords);
+             const encodedLocation = encodeURIComponent(location);
+             const searchUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodedKeywords}&location=${encodedLocation}`;
+             
+             await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+             console.log("[INFO] Arrived at job search page");
+             
+             // Wait for jobs to load
+             await new Promise(resolve => setTimeout(resolve, 5000));
+             
+             // Start applying to jobs
+             console.log("[INFO] Starting job application process...");
+             await applyToJobs(page, resumePath);
+             
+             // Wait for user to see the results
+             console.log("[INFO] Job application process completed. Browser will stay open for 30 seconds...");
+             await new Promise(resolve => setTimeout(resolve, 30000));
             
         } finally {
             await browser.close();

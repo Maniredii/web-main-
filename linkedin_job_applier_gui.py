@@ -163,10 +163,44 @@ class LinkedInJobApplierGUI:
         
         search_frame.columnconfigure(1, weight=1)
         
+    def create_credentials_section(self, parent):
+        """Create the login credentials display section"""
+        credentials_frame = ttk.LabelFrame(parent, text="🔐 Login Credentials", padding="15")
+        credentials_frame.grid(row=3, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
+        
+        # Load credentials from file
+        try:
+            with open('user_credentials.json', 'r') as f:
+                credentials = json.load(f)
+                linkedin_email = credentials.get('linkedin', {}).get('email', 'Not found')
+                linkedin_password = credentials.get('linkedin', {}).get('password', 'Not found')
+        except:
+            linkedin_email = 'Not found'
+            linkedin_password = 'Not found'
+        
+        # Email display
+        ttk.Label(credentials_frame, text="LinkedIn Email:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        email_label = ttk.Label(credentials_frame, text=linkedin_email, font=("Arial", 10, "bold"))
+        email_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # Password display (masked)
+        ttk.Label(credentials_frame, text="LinkedIn Password:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        password_label = ttk.Label(credentials_frame, text="*" * len(linkedin_password) if linkedin_password != 'Not found' else 'Not found', 
+                                 font=("Arial", 10, "bold"))
+        password_label.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # Status indicator
+        status_text = "✅ Credentials Loaded" if linkedin_email != 'Not found' else "❌ Credentials Not Found"
+        status_label = ttk.Label(credentials_frame, text=status_text, 
+                               foreground="green" if linkedin_email != 'Not found' else "red")
+        status_label.grid(row=2, column=0, columnspan=2, pady=(10, 0))
+        
+        credentials_frame.columnconfigure(1, weight=1)
+        
     def create_automation_controls(self, parent):
         """Create the automation control buttons"""
         controls_frame = ttk.LabelFrame(parent, text="🎮 Automation Controls", padding="15")
-        controls_frame.grid(row=3, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
+        controls_frame.grid(row=4, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
         
         # Main automation button
         self.start_button = ttk.Button(controls_frame, 
@@ -185,7 +219,7 @@ class LinkedInJobApplierGUI:
     def create_status_section(self, parent):
         """Create the status and progress section"""
         status_frame = ttk.LabelFrame(parent, text="📊 Status & Progress", padding="15")
-        status_frame.grid(row=4, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
+        status_frame.grid(row=5, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
         
         # Status label
         self.status_var = tk.StringVar(value="Ready to start automation")
@@ -206,7 +240,7 @@ class LinkedInJobApplierGUI:
     def create_results_section(self, parent):
         """Create the results display section"""
         results_frame = ttk.LabelFrame(parent, text="📋 Results & Jobs Found", padding="15")
-        results_frame.grid(row=5, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
+        results_frame.grid(row=6, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
         
         # Results text
         self.results_text = scrolledtext.ScrolledText(results_frame, height=8, width=80, wrap=tk.WORD)
@@ -225,7 +259,7 @@ class LinkedInJobApplierGUI:
     def create_settings_section(self, parent):
         """Create the settings section"""
         settings_frame = ttk.LabelFrame(parent, text="⚙️ Settings", padding="15")
-        settings_frame.grid(row=6, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
+        settings_frame.grid(row=7, column=0, columnspan=2, pady=(0, 15), sticky=(tk.W, tk.E))
         
         # Settings grid
         ttk.Label(settings_frame, text="Auto-apply to jobs:").grid(row=0, column=0, sticky=tk.W, pady=5)
